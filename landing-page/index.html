@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>语音快记 - 智能通话录音管理与纪要生成</title>
+    <title>语音快记 - 智能通话录音管理与 AI 纪要生成</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <!-- Navigation -->
@@ -20,85 +19,108 @@
                 <span class="logo-text">语音快记</span>
             </div>
             <div class="nav-links">
-                <a href="#features">功能特性</a>
-                <a href="#screenshots">应用截图</a>
-                <a href="#tech">技术架构</a>
-                <a href="#download" class="nav-download-btn">立即下载</a>
+                <a href="#features">功能</a>
+                <a href="#workflow">工作流</a>
+                <a href="#screenshots">截图</a>
+                <a href="#tech">技术</a>
+                <a href="#download" class="nav-download-btn">下载</a>
             </div>
+            <button class="mobile-menu-btn" aria-label="菜单">
+                <span></span><span></span><span></span>
+            </button>
         </div>
     </nav>
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-bg-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-        </div>
+        <div class="hero-glow glow-1"></div>
+        <div class="hero-glow glow-2"></div>
+        <div class="hero-grid-bg"></div>
         <div class="hero-container">
             <div class="hero-content">
-                <div class="hero-badge">🎙️ Android App</div>
+                <div class="hero-badge">
+                    <span class="badge-dot"></span>
+                    开源免费 · Android
+                </div>
                 <h1 class="hero-title">
-                    <span class="gradient-text">语音快记</span>
-                    <br>智能通话录音管理
+                    让每次通话<br>
+                    <span class="gradient-text">不再遗忘</span>
                 </h1>
                 <p class="hero-subtitle">
-                    一键扫描通话录音，AI 智能转写与纪要生成。
-                    <br>让每一次重要通话都不再遗忘。
+                    自动扫描通话录音，AI 语音转写 + 智能纪要生成。<br>
+                    关键信息、待办事项、事件脉络，一目了然。
                 </p>
                 <div class="hero-actions">
                     <a href="#download" class="btn btn-primary">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                             <polyline points="7 10 12 15 17 10"/>
                             <line x1="12" y1="15" x2="12" y2="3"/>
                         </svg>
-                        免费下载 APK
+                        免费下载
                     </a>
-                    <a href="https://github.com/Pygmilion/CallRecordManager" class="btn btn-secondary" target="_blank">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <a href="https://github.com/Pygmilion/CallRecordManager" class="btn btn-ghost" target="_blank">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                         </svg>
-                        查看源码
+                        GitHub
                     </a>
                 </div>
-                <div class="hero-stats">
-                    <div class="stat-item">
-                        <span class="stat-number">v1.0.0</span>
-                        <span class="stat-label">当前版本</span>
+                <div class="hero-meta">
+                    <div class="meta-item">
+                        <span class="meta-value">v1.0.0</span>
+                        <span class="meta-label">版本</span>
                     </div>
-                    <div class="stat-divider"></div>
-                    <div class="stat-item">
-                        <span class="stat-number">24+</span>
-                        <span class="stat-label">最低 SDK</span>
+                    <div class="meta-divider"></div>
+                    <div class="meta-item">
+                        <span class="meta-value">Android 7+</span>
+                        <span class="meta-label">系统要求</span>
                     </div>
-                    <div class="stat-divider"></div>
-                    <div class="stat-item">
-                        <span class="stat-number">MIT</span>
-                        <span class="stat-label">开源协议</span>
+                    <div class="meta-divider"></div>
+                    <div class="meta-item">
+                        <span class="meta-value">MIT</span>
+                        <span class="meta-label">开源协议</span>
                     </div>
                 </div>
             </div>
             <div class="hero-visual">
-                <div class="phone-mockup">
-                    <div class="phone-frame">
-                        <div class="phone-notch"></div>
-                        <div class="phone-screen">
-                            <div class="hero-app-preview">
-                                <img src="images/logo.png" alt="语音快记" class="hero-app-icon">
-                                <p class="hero-app-name">语音快记</p>
-                                <div class="hero-app-ui">
-                                    <div class="mock-card">
-                                        <div class="mock-wave"></div>
-                                        <span>通话录音 #1</span>
+                <div class="phone-showcase">
+                    <div class="phone-glow"></div>
+                    <div class="phone-device">
+                        <div class="phone-island"></div>
+                        <div class="phone-screen-area">
+                            <div class="app-preview">
+                                <div class="app-preview-header">
+                                    <img src="images/logo.png" alt="icon" class="app-preview-icon">
+                                    <div>
+                                        <div class="app-preview-title">语音快记</div>
+                                        <div class="app-preview-sub">3 条录音 · 2 条纪要</div>
                                     </div>
-                                    <div class="mock-card">
-                                        <div class="mock-wave"></div>
-                                        <span>通话录音 #2</span>
+                                </div>
+                                <div class="app-preview-cards">
+                                    <div class="preview-card">
+                                        <div class="preview-card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)">🎙</div>
+                                        <div class="preview-card-info">
+                                            <div class="preview-card-name">张经理 · 项目沟通</div>
+                                            <div class="preview-card-meta">5:32 · 已转写</div>
+                                        </div>
+                                        <div class="preview-card-badge done">✓</div>
                                     </div>
-                                    <div class="mock-card">
-                                        <div class="mock-wave"></div>
-                                        <span>通话录音 #3</span>
+                                    <div class="preview-card">
+                                        <div class="preview-card-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c)">📞</div>
+                                        <div class="preview-card-info">
+                                            <div class="preview-card-name">李总 · 合同确认</div>
+                                            <div class="preview-card-meta">3:18 · 生成纪要中</div>
+                                        </div>
+                                        <div class="preview-card-badge pending">⋯</div>
+                                    </div>
+                                    <div class="preview-card">
+                                        <div class="preview-card-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe)">📱</div>
+                                        <div class="preview-card-info">
+                                            <div class="preview-card-name">王工 · 技术评审</div>
+                                            <div class="preview-card-meta">8:45 · 待处理</div>
+                                        </div>
+                                        <div class="preview-card-badge new">NEW</div>
                                     </div>
                                 </div>
                             </div>
@@ -113,75 +135,148 @@
     <section id="features" class="features">
         <div class="section-container">
             <div class="section-header">
-                <span class="section-badge">核心功能</span>
-                <h2 class="section-title">强大而简洁的功能</h2>
-                <p class="section-desc">从录音管理到 AI 纪要生成，一站式解决通话记录需求</p>
+                <span class="section-tag">核心功能</span>
+                <h2 class="section-title">从录音到洞察，一站到底</h2>
+                <p class="section-desc">八大核心功能模块，覆盖通话录音管理的完整闭环</p>
             </div>
             <div class="features-grid">
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                            <line x1="12" y1="19" x2="12" y2="23"/>
-                            <line x1="8" y1="23" x2="16" y2="23"/>
+                    <div class="feature-icon icon-scan">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
                         </svg>
                     </div>
-                    <h3>录音扫描管理</h3>
-                    <p>自动扫描手机中的通话录音文件，支持多种音频格式，按时间智能排序展示。</p>
+                    <h3>录音扫描</h3>
+                    <p>自动扫描手机中的通话录音，支持小米、华为、OPPO 等品牌，兼容 m4a/amr/mp3/wav 等多种格式。按联系人智能分组。</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                    <div class="feature-icon icon-play">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
                         </svg>
                     </div>
                     <h3>在线播放</h3>
-                    <p>内置音频播放器，支持播放进度控制、倍速播放，随时回顾通话内容。</p>
+                    <p>内置音频播放器，支持播放/暂停、拖动进度条、快进 10 秒/后退 10 秒。播放时自动高亮对应转录文本。</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                            <polyline points="10 9 9 9 8 9"/>
+                    <div class="feature-icon icon-asr">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
                         </svg>
                     </div>
-                    <h3>语音转文字</h3>
-                    <p>基于阶跃星辰 ASR API，高精度语音识别，支持中英文混合转写。</p>
+                    <h3>语音转写</h3>
+                    <p>基于阶跃星辰 ASR API，支持中英文混合识别。自动分离说话人身份，以对话气泡形式清晰展示。</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                            <path d="M12 20h9"/>
-                            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                    <div class="feature-icon icon-ai">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
                         </svg>
                     </div>
-                    <h3>AI 智能纪要</h3>
-                    <p>AI 自动生成结构化会谈纪要，提取关键信息、待办事项，支持说话人分离。</p>
+                    <h3>AI 纪要</h3>
+                    <p>大模型自动生成结构化纪要：标题摘要、关键要点、参与者信息、待办事项（含优先级和截止日期）。</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"/>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    <div class="feature-icon icon-timeline">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="20" x2="12" y2="4"/>
+                            <circle cx="12" cy="4" r="2"/>
+                            <circle cx="12" cy="12" r="2"/>
+                            <circle cx="12" cy="20" r="2"/>
+                            <path d="M14 4h6"/>
+                            <path d="M4 12h6"/>
+                            <path d="M14 20h6"/>
                         </svg>
                     </div>
-                    <h3>智能搜索</h3>
-                    <p>支持按文件名、联系人、日期等多维度搜索，快速定位目标录音。</p>
+                    <h3>脉络简报</h3>
+                    <p>选择多条纪要，AI 自动梳理事件发展脉络、分析趋势变化，生成可视化时间线和跟进建议。</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon" style="background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    <div class="feature-icon icon-import">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
                     </div>
-                    <h3>本地安全存储</h3>
-                    <p>所有数据存储在本地 Room 数据库，保护隐私，无需担心数据泄露。</p>
+                    <h3>导入分享</h3>
+                    <p>支持从文件管理器选取音频，也可从微信等 App 直接分享到本应用。提供仅存储、转写、完整处理三种模式。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon icon-export">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                            <polyline points="16 6 12 2 8 6"/>
+                            <line x1="12" y1="2" x2="12" y2="15"/>
+                        </svg>
+                    </div>
+                    <h3>导出分享</h3>
+                    <p>纪要导出为 Markdown 文本或 TXT 文件，通过系统分享发送至微信、邮件等任意渠道。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon icon-secure">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <h3>隐私安全</h3>
+                    <p>所有数据存储在本地 Room 数据库，不上传任何个人信息。后台任务有通知提醒，退出保护防止误中断。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Workflow Section -->
+    <section id="workflow" class="workflow">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-tag">工作流程</span>
+                <h2 class="section-title">四步完成，从录音到纪要</h2>
+                <p class="section-desc">自动化流水线处理，无需手动干预</p>
+            </div>
+            <div class="workflow-steps">
+                <div class="workflow-step">
+                    <div class="step-number">01</div>
+                    <div class="step-icon">📂</div>
+                    <h3>扫描录音</h3>
+                    <p>一键扫描手机中的通话录音文件，自动识别联系人并按分组排列</p>
+                </div>
+                <div class="workflow-connector">
+                    <svg width="40" height="24" viewBox="0 0 40 24">
+                        <path d="M0 12h32l-6-6M32 12l-6 6" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                    </svg>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">02</div>
+                    <div class="step-icon">🗣️</div>
+                    <h3>AI 转写</h3>
+                    <p>调用阶跃星辰 ASR API，将语音转为文字，自动区分不同说话人</p>
+                </div>
+                <div class="workflow-connector">
+                    <svg width="40" height="24" viewBox="0 0 40 24">
+                        <path d="M0 12h32l-6-6M32 12l-6 6" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                    </svg>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">03</div>
+                    <div class="step-icon">📝</div>
+                    <h3>生成纪要</h3>
+                    <p>大语言模型自动生成结构化纪要：摘要、要点、待办事项一应俱全</p>
+                </div>
+                <div class="workflow-connector">
+                    <svg width="40" height="24" viewBox="0 0 40 24">
+                        <path d="M0 12h32l-6-6M32 12l-6 6" fill="none" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                    </svg>
+                </div>
+                <div class="workflow-step">
+                    <div class="step-number">04</div>
+                    <div class="step-icon">📊</div>
+                    <h3>脉络分析</h3>
+                    <p>多条纪要聚合分析，梳理时间线、趋势变化与后续建议</p>
                 </div>
             </div>
         </div>
@@ -191,82 +286,149 @@
     <section id="screenshots" class="screenshots">
         <div class="section-container">
             <div class="section-header">
-                <span class="section-badge">应用截图</span>
-                <h2 class="section-title">精心设计的界面</h2>
-                <p class="section-desc">现代 Material Design 3 风格，简洁优雅的用户体验</p>
+                <span class="section-tag">界面预览</span>
+                <h2 class="section-title">Material Design 3 风格</h2>
+                <p class="section-desc">现代简洁的界面设计，让操作轻松自然</p>
             </div>
             <div class="screenshot-gallery">
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <div class="screenshot-mock">
-                            <div class="mock-statusbar"></div>
-                            <div class="mock-header">📋 录音列表</div>
-                            <div class="mock-list">
-                                <div class="mock-list-item"><div class="mock-avatar" style="background:#667eea"></div><div class="mock-lines"><div class="mock-line w80"></div><div class="mock-line w50"></div></div><div class="mock-time">3:42</div></div>
-                                <div class="mock-list-item"><div class="mock-avatar" style="background:#f093fb"></div><div class="mock-lines"><div class="mock-line w70"></div><div class="mock-line w40"></div></div><div class="mock-time">5:18</div></div>
-                                <div class="mock-list-item"><div class="mock-avatar" style="background:#4facfe"></div><div class="mock-lines"><div class="mock-line w90"></div><div class="mock-line w60"></div></div><div class="mock-time">2:05</div></div>
-                                <div class="mock-list-item"><div class="mock-avatar" style="background:#43e97b"></div><div class="mock-lines"><div class="mock-line w60"></div><div class="mock-line w80"></div></div><div class="mock-time">8:33</div></div>
-                                <div class="mock-list-item"><div class="mock-avatar" style="background:#fa709a"></div><div class="mock-lines"><div class="mock-line w75"></div><div class="mock-line w45"></div></div><div class="mock-time">1:22</div></div>
+                        <div class="screen-mock">
+                            <div class="sm-status"></div>
+                            <div class="sm-topbar">
+                                <span class="sm-topbar-title">📋 录音列表</span>
+                                <span class="sm-topbar-action">🔍</span>
                             </div>
-                            <div class="mock-fab">+</div>
+                            <div class="sm-body">
+                                <div class="sm-group-label">张经理（3）</div>
+                                <div class="sm-record-item">
+                                    <div class="sm-rec-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)"></div>
+                                    <div class="sm-rec-info"><div class="sm-rec-name">项目沟通</div><div class="sm-rec-meta">5:32 · 2026-02-07</div></div>
+                                    <div class="sm-rec-status done">✓ 完成</div>
+                                </div>
+                                <div class="sm-record-item">
+                                    <div class="sm-rec-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)"></div>
+                                    <div class="sm-rec-info"><div class="sm-rec-name">需求确认</div><div class="sm-rec-meta">3:18 · 2026-02-06</div></div>
+                                    <div class="sm-rec-status done">✓ 完成</div>
+                                </div>
+                                <div class="sm-group-label">李总（2）</div>
+                                <div class="sm-record-item">
+                                    <div class="sm-rec-avatar" style="background:linear-gradient(135deg,#f093fb,#f5576c)"></div>
+                                    <div class="sm-rec-info"><div class="sm-rec-name">合同确认</div><div class="sm-rec-meta">2:45 · 2026-02-05</div></div>
+                                    <div class="sm-rec-status pending">⋯ 转写中</div>
+                                </div>
+                            </div>
+                            <div class="sm-fab">＋</div>
                         </div>
                     </div>
                     <p class="screenshot-caption">录音列表</p>
                 </div>
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <div class="screenshot-mock">
-                            <div class="mock-statusbar"></div>
-                            <div class="mock-header">🎵 录音详情</div>
-                            <div class="mock-player">
-                                <div class="mock-waveform">
-                                    <span style="height:30%"></span><span style="height:60%"></span><span style="height:90%"></span><span style="height:45%"></span><span style="height:75%"></span><span style="height:50%"></span><span style="height:85%"></span><span style="height:35%"></span><span style="height:65%"></span><span style="height:40%"></span><span style="height:70%"></span><span style="height:55%"></span><span style="height:80%"></span><span style="height:25%"></span><span style="height:60%"></span><span style="height:45%"></span>
+                        <div class="screen-mock">
+                            <div class="sm-status"></div>
+                            <div class="sm-topbar">
+                                <span class="sm-topbar-back">←</span>
+                                <span class="sm-topbar-title">🎵 录音详情</span>
+                            </div>
+                            <div class="sm-body">
+                                <div class="sm-player-area">
+                                    <div class="sm-waveform">
+                                        <span style="height:25%"></span><span style="height:55%"></span><span style="height:85%"></span><span style="height:40%"></span><span style="height:70%"></span><span style="height:50%"></span><span style="height:90%"></span><span style="height:30%"></span><span style="height:65%"></span><span style="height:45%"></span><span style="height:75%"></span><span style="height:35%"></span>
+                                    </div>
+                                    <div class="sm-progress"><div class="sm-progress-fill" style="width:62%"></div></div>
+                                    <div class="sm-time-row"><span>2:15</span><span>5:32</span></div>
+                                    <div class="sm-controls">
+                                        <span class="sm-ctrl">⏪</span>
+                                        <span class="sm-ctrl-play">▶</span>
+                                        <span class="sm-ctrl">⏩</span>
+                                    </div>
                                 </div>
-                                <div class="mock-progress"><div class="mock-progress-bar" style="width:65%"></div></div>
-                                <div class="mock-controls">⏮ ▶ ⏭</div>
-                            </div>
-                            <div class="mock-info-section">
-                                <div class="mock-line w90"></div>
-                                <div class="mock-line w70"></div>
-                                <div class="mock-line w50"></div>
+                                <div class="sm-divider"></div>
+                                <div class="sm-transcript">
+                                    <div class="sm-bubble left">你好，关于项目进度...</div>
+                                    <div class="sm-bubble right">目前已完成 80%...</div>
+                                    <div class="sm-bubble left">预计什么时候交付？</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <p class="screenshot-caption">录音详情</p>
+                    <p class="screenshot-caption">播放 & 转录</p>
                 </div>
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <div class="screenshot-mock">
-                            <div class="mock-statusbar"></div>
-                            <div class="mock-header">📝 会谈纪要</div>
-                            <div class="mock-memo">
-                                <div class="mock-memo-title">会议要点</div>
-                                <div class="mock-line w90"></div>
-                                <div class="mock-line w80"></div>
-                                <div class="mock-line w60"></div>
-                                <div class="mock-memo-title" style="margin-top:12px">待办事项</div>
-                                <div class="mock-todo"><span class="mock-check">✓</span><div class="mock-line w70"></div></div>
-                                <div class="mock-todo"><span class="mock-check empty">○</span><div class="mock-line w85"></div></div>
-                                <div class="mock-todo"><span class="mock-check empty">○</span><div class="mock-line w55"></div></div>
+                        <div class="screen-mock">
+                            <div class="sm-status"></div>
+                            <div class="sm-topbar">
+                                <span class="sm-topbar-back">←</span>
+                                <span class="sm-topbar-title">📝 会谈纪要</span>
+                            </div>
+                            <div class="sm-body">
+                                <div class="sm-minute-title">项目进度沟通纪要</div>
+                                <div class="sm-minute-section">
+                                    <div class="sm-section-bar" style="background:#667eea"></div>
+                                    <div>
+                                        <div class="sm-section-label">摘要</div>
+                                        <div class="sm-section-text">与张经理沟通项目进度，确认已完成 80%，预计下周交付...</div>
+                                    </div>
+                                </div>
+                                <div class="sm-minute-section">
+                                    <div class="sm-section-bar" style="background:#43e97b"></div>
+                                    <div>
+                                        <div class="sm-section-label">待办事项</div>
+                                        <div class="sm-todo-item"><span class="sm-priority high">高</span>提交测试报告</div>
+                                        <div class="sm-todo-item"><span class="sm-priority mid">中</span>更新文档</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <p class="screenshot-caption">会谈纪要</p>
+                    <p class="screenshot-caption">AI 纪要</p>
                 </div>
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <div class="screenshot-mock">
-                            <div class="mock-statusbar"></div>
-                            <div class="mock-header">📊 时间线</div>
-                            <div class="mock-timeline">
-                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#667eea"></div><div class="mock-tl-content"><div class="mock-line w60"></div><div class="mock-line w40" style="opacity:0.5"></div></div></div>
-                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#4facfe"></div><div class="mock-tl-content"><div class="mock-line w80"></div><div class="mock-line w50" style="opacity:0.5"></div></div></div>
-                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#43e97b"></div><div class="mock-tl-content"><div class="mock-line w70"></div><div class="mock-line w45" style="opacity:0.5"></div></div></div>
-                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#f093fb"></div><div class="mock-tl-content"><div class="mock-line w55"></div><div class="mock-line w35" style="opacity:0.5"></div></div></div>
+                        <div class="screen-mock">
+                            <div class="sm-status"></div>
+                            <div class="sm-topbar">
+                                <span class="sm-topbar-back">←</span>
+                                <span class="sm-topbar-title">📊 脉络简报</span>
+                            </div>
+                            <div class="sm-body">
+                                <div class="sm-brief-title">项目沟通全程追踪</div>
+                                <div class="sm-timeline">
+                                    <div class="sm-tl-node">
+                                        <div class="sm-tl-dot" style="background:#667eea"></div>
+                                        <div class="sm-tl-line"></div>
+                                        <div class="sm-tl-content">
+                                            <div class="sm-tl-date">02-05</div>
+                                            <div class="sm-tl-text">需求评审通过</div>
+                                        </div>
+                                    </div>
+                                    <div class="sm-tl-node">
+                                        <div class="sm-tl-dot" style="background:#4facfe"></div>
+                                        <div class="sm-tl-line"></div>
+                                        <div class="sm-tl-content">
+                                            <div class="sm-tl-date">02-06</div>
+                                            <div class="sm-tl-text">确认开发进度 80%</div>
+                                        </div>
+                                    </div>
+                                    <div class="sm-tl-node">
+                                        <div class="sm-tl-dot" style="background:#43e97b"></div>
+                                        <div class="sm-tl-line last"></div>
+                                        <div class="sm-tl-content">
+                                            <div class="sm-tl-date">02-07</div>
+                                            <div class="sm-tl-text">讨论交付时间线</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="sm-trend-card">
+                                    <div class="sm-section-label">📈 趋势</div>
+                                    <div class="sm-section-text">项目整体推进顺利</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <p class="screenshot-caption">时间线概览</p>
+                    <p class="screenshot-caption">脉络简报</p>
                 </div>
             </div>
         </div>
@@ -276,50 +438,88 @@
     <section id="tech" class="tech">
         <div class="section-container">
             <div class="section-header">
-                <span class="section-badge">技术架构</span>
-                <h2 class="section-title">现代化技术栈</h2>
-                <p class="section-desc">采用 Android 最新技术方案，确保应用性能与稳定性</p>
+                <span class="section-tag">技术架构</span>
+                <h2 class="section-title">现代化技术方案</h2>
+                <p class="section-desc">100% Kotlin · MVVM 架构 · Jetpack Compose 声明式 UI</p>
             </div>
-            <div class="tech-grid">
-                <div class="tech-card">
-                    <div class="tech-icon">🔤</div>
-                    <h4>Kotlin</h4>
-                    <p>100% Kotlin 编写</p>
+            <div class="tech-layout">
+                <div class="tech-arch">
+                    <div class="arch-layer">
+                        <div class="arch-label">UI 层</div>
+                        <div class="arch-items">
+                            <span>Jetpack Compose</span>
+                            <span>Material 3</span>
+                            <span>Navigation</span>
+                        </div>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <div class="arch-label">逻辑层</div>
+                        <div class="arch-items">
+                            <span>ViewModel</span>
+                            <span>Coroutines</span>
+                            <span>Flow</span>
+                        </div>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer">
+                        <div class="arch-label">数据层</div>
+                        <div class="arch-items">
+                            <span>Room DB</span>
+                            <span>Repository</span>
+                            <span>Retrofit</span>
+                        </div>
+                    </div>
+                    <div class="arch-arrow">↓</div>
+                    <div class="arch-layer layer-api">
+                        <div class="arch-label">AI 服务</div>
+                        <div class="arch-items">
+                            <span>阶跃星辰 ASR</span>
+                            <span>阶跃星辰 LLM</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="tech-card">
-                    <div class="tech-icon">🎨</div>
-                    <h4>Jetpack Compose</h4>
-                    <p>声明式 UI 框架</p>
-                </div>
-                <div class="tech-card">
-                    <div class="tech-icon">🏗️</div>
-                    <h4>MVVM</h4>
-                    <p>清晰架构分层</p>
-                </div>
-                <div class="tech-card">
-                    <div class="tech-icon">💾</div>
-                    <h4>Room</h4>
-                    <p>SQLite 持久化</p>
-                </div>
-                <div class="tech-card">
-                    <div class="tech-icon">🌐</div>
-                    <h4>Retrofit</h4>
-                    <p>网络请求框架</p>
-                </div>
-                <div class="tech-card">
-                    <div class="tech-icon">⚡</div>
-                    <h4>Coroutines</h4>
-                    <p>异步协程处理</p>
-                </div>
-                <div class="tech-card">
-                    <div class="tech-icon">🤖</div>
-                    <h4>阶跃星辰 API</h4>
-                    <p>ASR + LLM 服务</p>
-                </div>
-                <div class="tech-card">
-                    <div class="tech-icon">🎵</div>
-                    <h4>Media3</h4>
-                    <p>音频播放引擎</p>
+                <div class="tech-grid">
+                    <div class="tech-card">
+                        <div class="tech-emoji">🔤</div>
+                        <div class="tech-name">Kotlin</div>
+                        <div class="tech-desc">100% Kotlin</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-emoji">🎨</div>
+                        <div class="tech-name">Compose</div>
+                        <div class="tech-desc">声明式 UI</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-emoji">💾</div>
+                        <div class="tech-name">Room</div>
+                        <div class="tech-desc">本地数据库</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-emoji">🌐</div>
+                        <div class="tech-name">Retrofit</div>
+                        <div class="tech-desc">网络请求</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-emoji">⚡</div>
+                        <div class="tech-name">Coroutines</div>
+                        <div class="tech-desc">异步处理</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-emoji">🎵</div>
+                        <div class="tech-name">MediaPlayer</div>
+                        <div class="tech-desc">音频播放</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-emoji">🤖</div>
+                        <div class="tech-name">StepFun</div>
+                        <div class="tech-desc">ASR + LLM</div>
+                    </div>
+                    <div class="tech-card">
+                        <div class="tech-emoji">📦</div>
+                        <div class="tech-name">Gson</div>
+                        <div class="tech-desc">JSON 解析</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -329,32 +529,32 @@
     <section id="download" class="download">
         <div class="section-container">
             <div class="download-card">
-                <div class="download-content">
-                    <h2>立即下载语音快记</h2>
-                    <p>免费、开源、无广告。支持 Android 7.0 及以上系统。</p>
-                    <div class="download-buttons">
-                        <a href="https://github.com/Pygmilion/CallRecordManager/releases/latest/download/app-debug.apk" class="btn btn-download" id="download-apk-btn">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="download-left">
+                    <h2>下载<span class="gradient-text">语音快记</span></h2>
+                    <p class="download-desc">免费、开源、无广告。<br>通话录音管理的最佳伴侣。</p>
+                    <div class="download-btns">
+                        <a href="https://github.com/Pygmilion/CallRecordManager/releases/latest/download/app-debug.apk" class="btn btn-primary btn-lg">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                                 <polyline points="7 10 12 15 17 10"/>
                                 <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
                             下载 APK (v1.0.0)
                         </a>
-                        <a href="https://github.com/Pygmilion/CallRecordManager/releases" class="btn btn-outline" target="_blank">
+                        <a href="https://github.com/Pygmilion/CallRecordManager/releases" class="btn btn-outline-light" target="_blank">
                             查看所有版本
                         </a>
                     </div>
-                    <div class="download-info">
+                    <div class="download-tags">
                         <span>📱 Android 7.0+</span>
-                        <span>📦 约 15 MB</span>
-                        <span>🔓 开源免费</span>
+                        <span>📦 ~15 MB</span>
+                        <span>🔓 MIT 开源</span>
                     </div>
                 </div>
-                <div class="download-visual">
-                    <div class="qr-code-wrapper">
-                        <img src="images/qrcode.png" alt="扫码下载" class="qr-code-img">
-                        <p class="qr-label">扫码下载 APK</p>
+                <div class="download-right">
+                    <div class="qr-box">
+                        <img src="images/qrcode.png" alt="扫码下载" class="qr-img">
+                        <span class="qr-tip">扫码下载</span>
                     </div>
                 </div>
             </div>
@@ -364,58 +564,61 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="section-container">
-            <div class="footer-content">
+            <div class="footer-top">
                 <div class="footer-brand">
-                    <span class="logo-text">语音快记</span>
-                    <p>智能通话录音管理与纪要生成</p>
+                    <img src="images/logo.png" alt="语音快记" class="footer-logo" onerror="this.style.display='none'">
+                    <div>
+                        <div class="logo-text">语音快记</div>
+                        <p class="footer-slogan">智能通话录音管理与 AI 纪要生成</p>
+                    </div>
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/Pygmilion/CallRecordManager" target="_blank">GitHub</a>
-                    <a href="https://github.com/Pygmilion/CallRecordManager/issues" target="_blank">反馈问题</a>
-                    <a href="https://github.com/Pygmilion/CallRecordManager/blob/main/LICENSE" target="_blank">MIT 开源协议</a>
+                    <a href="https://github.com/Pygmilion/CallRecordManager/issues" target="_blank">问题反馈</a>
+                    <a href="https://github.com/Pygmilion/CallRecordManager/blob/main/LICENSE" target="_blank">MIT 协议</a>
                 </div>
             </div>
             <div class="footer-bottom">
-                <p>© 2026 语音快记. Made with ❤️</p>
+                <p>© 2026 语音快记 · Made with ❤️ by <a href="https://github.com/Pygmilion" target="_blank">Pygmilion</a></p>
             </div>
         </div>
     </footer>
 
-    <!-- Smooth Scroll Script -->
     <script>
+        // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
                 const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         });
 
-        // Navbar scroll effect
+        // Navbar scroll
         window.addEventListener('scroll', () => {
-            const navbar = document.querySelector('.navbar');
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
+            document.querySelector('.navbar').classList.toggle('scrolled', window.scrollY > 50);
         });
 
-        // Intersection Observer for animations
-        const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+        // Intersection Observer animations
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animate-in');
-                }
+                if (entry.isIntersecting) entry.target.classList.add('visible');
             });
-        }, observerOptions);
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
-        document.querySelectorAll('.feature-card, .tech-card, .screenshot-item').forEach(el => {
+        document.querySelectorAll('.feature-card, .tech-card, .screenshot-item, .workflow-step, .arch-layer').forEach(el => {
             observer.observe(el);
         });
+
+        // Mobile menu
+        const menuBtn = document.querySelector('.mobile-menu-btn');
+        const navLinks = document.querySelector('.nav-links');
+        if (menuBtn) {
+            menuBtn.addEventListener('click', () => {
+                navLinks.classList.toggle('open');
+                menuBtn.classList.toggle('active');
+            });
+        }
     </script>
 </body>
 </html>
