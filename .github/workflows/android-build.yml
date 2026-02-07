@@ -1,0 +1,51 @@
+name: Android CI - 自动编译 APK
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+      
+    - name: ☕ 设置 JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+        
+    - name: 🔧 配置 local.properties
+      run: |
+        echo "sdk.dir=$ANDROID_HOME" > local.properties
+        echo "STEPFUN_API_KEY=${{ secrets.STEPFUN_API_KEY }}" >> local.properties
+        
+    - name: 📝 授予 Gradle 执行权限
+      run: chmod +x gradlew
+      
+    - name: 🧹 清理项目
+      run: ./gradlew clean
+      
+    - name: 🔨 编译调试版 APK
+      run: ./gradlew assembleDebug
+      
+    - name: 📦 上传 APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
+        
+    - name: 📊 显示 APK 信息
+      run: |
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "✅ APK 编译成功！"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        ls -lh app/build/outputs/apk/debug/app-debug.apk
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
