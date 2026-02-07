@@ -1,0 +1,57 @@
+=== 应用日志开始 ===
+时间: 2026-02-07 14:01:39.117
+
+2026-02-07 14:01:39.117 [INFO ] [MainActivity] 应用启动
+2026-02-07 14:01:39.132 [INFO ] [ViewModel] MainViewModel 初始化
+2026-02-07 14:01:45.677 [INFO ] [ViewModel] 开始转写录音（后台）: 梁丹洵阶跃-2602021320.mp3
+2026-02-07 14:01:45.679 [INFO ] [转写] 开始转写录音: 梁丹洵阶跃-2602021320.mp3
+2026-02-07 14:01:45.680 [DEBUG] [转写] 录音ID: 45, 文件路径: /storage/emulated/0/Android/data/com.callrecord.manager/files/ImportedRecordings/梁丹洵阶跃-2602021320.mp3
+2026-02-07 14:01:45.681 [DEBUG] [转写] 文件大小: 1.39MB
+2026-02-07 14:01:45.682 [DEBUG] [API日志] 已保存日志: /storage/emulated/0/Android/data/com.callrecord.manager/files/ApiLogs/transcribe_request_1770444105682.txt
+2026-02-07 14:01:45.693 [INFO ] [转写] 创建转写记录，ID: 30
+2026-02-07 14:01:45.693 [DEBUG] [转写] 准备上传文件到API
+2026-02-07 14:01:45.695 [INFO ] [转写] 调用阶跃星辰ASR API (第1次)
+2026-02-07 14:02:16.820 [DEBUG] [转写] API响应码: 200
+2026-02-07 14:02:16.824 [INFO ] [转写] 转写成功，文本长度: 2328字符
+2026-02-07 14:02:16.827 [DEBUG] [API日志] 已保存日志: /storage/emulated/0/Android/data/com.callrecord.manager/files/ApiLogs/transcribe_response_1770444136825.txt
+2026-02-07 14:02:16.846 [INFO ] [转写] 转写记录已更新
+2026-02-07 14:02:16.866 [INFO ] [转写] 录音记录已标记为已转写
+2026-02-07 14:02:16.871 [INFO ] [ViewModel] 转写成功，开始生成纪要（后台）
+2026-02-07 14:02:16.873 [INFO ] [ViewModel] 调用生成纪要（后台），转写ID: 30
+2026-02-07 14:02:16.883 [INFO ] [生成纪要] 开始生成会谈纪要，转写ID: 30
+2026-02-07 14:02:16.886 [DEBUG] [生成纪要] 转写文本长度: 2328字符
+2026-02-07 14:02:16.887 [DEBUG] [生成纪要] 参与者: 我 和 梁丹洵阶跃
+2026-02-07 14:02:16.892 [DEBUG] [生成纪要] Prompt长度: 4773字符
+2026-02-07 14:02:16.894 [DEBUG] [API日志] 已保存日志: /storage/emulated/0/Android/data/com.callrecord.manager/files/ApiLogs/minute_request_1770444136893.txt
+2026-02-07 14:02:16.895 [INFO ] [生成纪要] 调用阶跃星辰LLM API
+2026-02-07 14:02:33.105 [DEBUG] [生成纪要] API响应码: 200
+2026-02-07 14:02:33.108 [INFO ] [生成纪要] LLM生成成功，响应长度: 1007字符
+2026-02-07 14:02:33.110 [DEBUG] [生成纪要] Token使用: 7398
+2026-02-07 14:02:33.113 [DEBUG] [API日志] 已保存日志: /storage/emulated/0/Android/data/com.callrecord.manager/files/ApiLogs/minute_response_1770444153111.txt
+2026-02-07 14:02:33.114 [DEBUG] [生成纪要] 开始解析JSON响应
+2026-02-07 14:02:33.124 [WARN ] [解析纪要] JSON解析失败，尝试修复后仍无法解析: java.io.EOFException: End of input at line 28 column 6 path $.actionItems[1]
+2026-02-07 14:02:33.126 [DEBUG] [解析纪要] 原始内容: {
+  "title": "关于内部信息误传及团队协作问题的沟通",
+  "summary": "通话中，Speaker 1向梁丹洵阶跃反映，同事'国语'在其未参与的情况下，散布'只卖4币'等不实商务信息，并默认其认可，同时向客户方（如老米、杨幂）传播负面言论，威胁RK等战略合作。Speaker 1认为此举严重损害团队利益，要求梁丹与国语沟通，强调团队内部解决矛盾，停止对外影响业务，并提议双方公开示好、翻篇合作。",
+  "keyPoints": [
+    "同事'国语'在Speaker 1未上线时散布'只卖4币'不实信息，并默认其认可，感觉被设计。",
+    "国语向客户方（老米、杨幂）传播负面信息，称业务不挣钱，威胁RK等战略合作。",
+    "要求团队内部解决矛盾，停止对外散布不实信息，避免影响工作和战略。",
+    "提议与国语重归于好，公开示好，翻篇过往，各司其职。"
+  ],
+  "participants": [
+    {
+      "name": "梁丹洵阶跃",
+      "role": "商务协调员",
+      "speakerId": "Spea
+2026-02-07 14:02:33.128 [INFO ] [生成纪要] 解析成功: 标题=会谈纪要
+2026-02-07 14:02:33.134 [INFO ] [生成纪要] 纪要保存成功，ID: 15
+2026-02-07 14:02:33.138 [INFO ] [ViewModel] 纪要生成成功，ID: 15
+2026-02-07 14:05:56.403 [INFO ] [日志导出] 日志文件已分享: /storage/emulated/0/Android/data/com.callrecord.manager/files/Logs/app_log_20260207_140139.txt
+2026-02-07 14:06:11.677 [INFO ] [日志导出] 日志文件已分享: /storage/emulated/0/Android/data/com.callrecord.manager/files/Logs/app_log_20260207_140139.txt
+2026-02-07 14:06:40.300 [INFO ] [导出纪要] 已导出: /storage/emulated/0/Android/data/com.callrecord.manager/files/Minutes/会谈纪要_20260207_140640.txt
+2026-02-07 14:06:40.301 [INFO ] [分享纪要] 准备分享文件: /storage/emulated/0/Android/data/com.callrecord.manager/files/Minutes/会谈纪要_20260207_140640.txt
+2026-02-07 14:06:40.302 [DEBUG] [分享纪要] 文件大小: 513字节
+2026-02-07 14:06:40.303 [DEBUG] [分享纪要] 文件URI: content://com.callrecord.manager.fileprovider/minutes/%E4%BC%9A%E8%B0%88%E7%BA%AA%E8%A6%81_20260207_140640.txt
+2026-02-07 14:06:40.323 [INFO ] [分享纪要] 已打开分享界面
+2026-02-07 14:07:00.922 [INFO ] [日志导出] 日志文件已分享: /storage/emulated/0/Android/data/com.callrecord.manager/files/Logs/app_log_20260207_140139.txt

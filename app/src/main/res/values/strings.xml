@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">语音快记</string>
+    <string name="tab_records">录音</string>
+    <string name="tab_minutes">纪要</string>
+    <string name="scan_recordings">扫描录音</string>
+    <string name="search">搜索</string>
+    <string name="delete">删除</string>
+    <string name="transcribe">转写</string>
+    <string name="generate_minute">生成纪要</string>
+    <string name="no_records">暂无录音文件</string>
+    <string name="no_minutes">暂无会谈纪要</string>
+    <string name="loading">加载中...</string>
+    <string name="error">错误</string>
+    <string name="success">成功</string>
+</resources>

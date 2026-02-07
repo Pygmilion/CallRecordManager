@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-files-path name="logs" path="Logs/" />
+    <external-files-path name="api_logs" path="ApiLogs/" />
+    <external-files-path name="minutes" path="Minutes/" />
+    <external-files-path name="recordings" path="ImportedRecordings/" />
+</paths>
