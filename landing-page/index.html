@@ -84,7 +84,24 @@
                     <div class="phone-frame">
                         <div class="phone-notch"></div>
                         <div class="phone-screen">
-                            <img src="images/screenshot-home.png" alt="App Screenshot" onerror="this.parentElement.innerHTML='<div class=\'placeholder-screen\'><span>📱</span><p>应用截图</p></div>'">
+                            <div class="hero-app-preview">
+                                <img src="images/logo.png" alt="语音快记" class="hero-app-icon">
+                                <p class="hero-app-name">语音快记</p>
+                                <div class="hero-app-ui">
+                                    <div class="mock-card">
+                                        <div class="mock-wave"></div>
+                                        <span>通话录音 #1</span>
+                                    </div>
+                                    <div class="mock-card">
+                                        <div class="mock-wave"></div>
+                                        <span>通话录音 #2</span>
+                                    </div>
+                                    <div class="mock-card">
+                                        <div class="mock-wave"></div>
+                                        <span>通话录音 #3</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -181,25 +198,73 @@
             <div class="screenshot-gallery">
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <img src="images/screenshot-1.png" alt="录音列表" onerror="this.parentElement.innerHTML='<div class=\'screenshot-placeholder\'><span>📋</span><p>录音列表</p></div>'">
+                        <div class="screenshot-mock">
+                            <div class="mock-statusbar"></div>
+                            <div class="mock-header">📋 录音列表</div>
+                            <div class="mock-list">
+                                <div class="mock-list-item"><div class="mock-avatar" style="background:#667eea"></div><div class="mock-lines"><div class="mock-line w80"></div><div class="mock-line w50"></div></div><div class="mock-time">3:42</div></div>
+                                <div class="mock-list-item"><div class="mock-avatar" style="background:#f093fb"></div><div class="mock-lines"><div class="mock-line w70"></div><div class="mock-line w40"></div></div><div class="mock-time">5:18</div></div>
+                                <div class="mock-list-item"><div class="mock-avatar" style="background:#4facfe"></div><div class="mock-lines"><div class="mock-line w90"></div><div class="mock-line w60"></div></div><div class="mock-time">2:05</div></div>
+                                <div class="mock-list-item"><div class="mock-avatar" style="background:#43e97b"></div><div class="mock-lines"><div class="mock-line w60"></div><div class="mock-line w80"></div></div><div class="mock-time">8:33</div></div>
+                                <div class="mock-list-item"><div class="mock-avatar" style="background:#fa709a"></div><div class="mock-lines"><div class="mock-line w75"></div><div class="mock-line w45"></div></div><div class="mock-time">1:22</div></div>
+                            </div>
+                            <div class="mock-fab">+</div>
+                        </div>
                     </div>
                     <p class="screenshot-caption">录音列表</p>
                 </div>
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <img src="images/screenshot-2.png" alt="录音详情" onerror="this.parentElement.innerHTML='<div class=\'screenshot-placeholder\'><span>🎵</span><p>录音详情</p></div>'">
+                        <div class="screenshot-mock">
+                            <div class="mock-statusbar"></div>
+                            <div class="mock-header">🎵 录音详情</div>
+                            <div class="mock-player">
+                                <div class="mock-waveform">
+                                    <span style="height:30%"></span><span style="height:60%"></span><span style="height:90%"></span><span style="height:45%"></span><span style="height:75%"></span><span style="height:50%"></span><span style="height:85%"></span><span style="height:35%"></span><span style="height:65%"></span><span style="height:40%"></span><span style="height:70%"></span><span style="height:55%"></span><span style="height:80%"></span><span style="height:25%"></span><span style="height:60%"></span><span style="height:45%"></span>
+                                </div>
+                                <div class="mock-progress"><div class="mock-progress-bar" style="width:65%"></div></div>
+                                <div class="mock-controls">⏮ ▶ ⏭</div>
+                            </div>
+                            <div class="mock-info-section">
+                                <div class="mock-line w90"></div>
+                                <div class="mock-line w70"></div>
+                                <div class="mock-line w50"></div>
+                            </div>
+                        </div>
                     </div>
                     <p class="screenshot-caption">录音详情</p>
                 </div>
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <img src="images/screenshot-3.png" alt="会谈纪要" onerror="this.parentElement.innerHTML='<div class=\'screenshot-placeholder\'><span>📝</span><p>会谈纪要</p></div>'">
+                        <div class="screenshot-mock">
+                            <div class="mock-statusbar"></div>
+                            <div class="mock-header">📝 会谈纪要</div>
+                            <div class="mock-memo">
+                                <div class="mock-memo-title">会议要点</div>
+                                <div class="mock-line w90"></div>
+                                <div class="mock-line w80"></div>
+                                <div class="mock-line w60"></div>
+                                <div class="mock-memo-title" style="margin-top:12px">待办事项</div>
+                                <div class="mock-todo"><span class="mock-check">✓</span><div class="mock-line w70"></div></div>
+                                <div class="mock-todo"><span class="mock-check empty">○</span><div class="mock-line w85"></div></div>
+                                <div class="mock-todo"><span class="mock-check empty">○</span><div class="mock-line w55"></div></div>
+                            </div>
+                        </div>
                     </div>
                     <p class="screenshot-caption">会谈纪要</p>
                 </div>
                 <div class="screenshot-item">
                     <div class="screenshot-phone">
-                        <img src="images/screenshot-4.png" alt="时间线概览" onerror="this.parentElement.innerHTML='<div class=\'screenshot-placeholder\'><span>📊</span><p>时间线概览</p></div>'">
+                        <div class="screenshot-mock">
+                            <div class="mock-statusbar"></div>
+                            <div class="mock-header">📊 时间线</div>
+                            <div class="mock-timeline">
+                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#667eea"></div><div class="mock-tl-content"><div class="mock-line w60"></div><div class="mock-line w40" style="opacity:0.5"></div></div></div>
+                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#4facfe"></div><div class="mock-tl-content"><div class="mock-line w80"></div><div class="mock-line w50" style="opacity:0.5"></div></div></div>
+                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#43e97b"></div><div class="mock-tl-content"><div class="mock-line w70"></div><div class="mock-line w45" style="opacity:0.5"></div></div></div>
+                                <div class="mock-tl-item"><div class="mock-tl-dot" style="background:#f093fb"></div><div class="mock-tl-content"><div class="mock-line w55"></div><div class="mock-line w35" style="opacity:0.5"></div></div></div>
+                            </div>
+                        </div>
                     </div>
                     <p class="screenshot-caption">时间线概览</p>
                 </div>
@@ -287,9 +352,9 @@
                     </div>
                 </div>
                 <div class="download-visual">
-                    <div class="qr-placeholder">
-                        <p>📷 扫码下载</p>
-                        <small>（QR Code 待生成）</small>
+                    <div class="qr-code-wrapper">
+                        <img src="images/qrcode.png" alt="扫码下载" class="qr-code-img">
+                        <p class="qr-label">扫码下载 APK</p>
                     </div>
                 </div>
             </div>
