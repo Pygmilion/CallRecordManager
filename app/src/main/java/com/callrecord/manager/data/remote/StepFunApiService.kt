@@ -39,12 +39,17 @@ interface StepFunApiService {
 object ApiClient {
     private const val BASE_URL = "https://api.stepfun.com/"
     
-    fun createStepFunService(apiKey: String): StepFunApiService {
+    /**
+     * Create StepFunApiService with dynamic API Key retrieval.
+     * @param apiKeyProvider function that returns the current API Key on each invocation
+     */
+    fun createStepFunService(apiKeyProvider: () -> String): StepFunApiService {
         val okHttpClient = okhttp3.OkHttpClient.Builder()
             .addInterceptor { chain ->
+                val currentApiKey = apiKeyProvider()
                 val original = chain.request()
                 val request = original.newBuilder()
-                    .header("Authorization", "Bearer $apiKey")
+                    .header("Authorization", "Bearer $currentApiKey")
                     .header("Content-Type", "application/json")
                     .method(original.method, original.body)
                     .build()

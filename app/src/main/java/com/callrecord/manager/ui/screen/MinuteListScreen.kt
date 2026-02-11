@@ -31,6 +31,7 @@ import java.util.*
 fun MinuteListScreen(
     viewModel: MainViewModel,
     onMinuteClick: (MeetingMinuteEntity) -> Unit,
+    onSettingsClick: () -> Unit = {},
     onGenerateTimelineBrief: (List<MinuteWithContact>) -> Unit = {}
 ) {
     val minutesWithContact by viewModel.minutesWithContact.collectAsState()
@@ -101,6 +102,9 @@ fun MinuteListScreen(
                         }
                         IconButton(onClick = { viewModel.refreshMinutes() }) {
                             Icon(Icons.Outlined.Refresh, "刷新")
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Outlined.Settings, "设置")
                         }
                     },
                     colors = TopAppBarDefaults.largeTopAppBarColors(

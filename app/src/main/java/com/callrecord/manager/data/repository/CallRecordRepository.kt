@@ -28,6 +28,18 @@ class CallRecordRepository(
     private val apiService: StepFunApiService
 ) {
     
+    /**
+     * Get current API Key from ApiKeyProvider.
+     * Throws IllegalStateException if not configured.
+     */
+    private fun requireApiKey(): String {
+        val key = ApiKeyProvider.getApiKey()
+        if (key.isBlank()) {
+            throw IllegalStateException("API Key 未配置，请前往设置页面配置 API Key")
+        }
+        return key
+    }
+    
     // API 日志目录
     private val apiLogDir = File(context.getExternalFilesDir(null), "ApiLogs").apply {
         if (!exists()) mkdirs()
@@ -371,7 +383,7 @@ class CallRecordRepository(
     /**
      * 转写录音
      */
-    suspend fun transcribeRecord(record: CallRecordEntity, apiKey: String): Result<TranscriptEntity> = withContext(Dispatchers.IO) {
+    suspend fun transcribeRecord(record: CallRecordEntity): Result<TranscriptEntity> = withContext(Dispatchers.IO) {
         try {
             AppLogger.i("转写", "开始转写录音: ${record.fileName}")
             AppLogger.d("转写", "录音ID: ${record.id}, 文件路径: ${record.filePath}")
@@ -407,6 +419,8 @@ class CallRecordRepository(
 
             // 准备文件上传
             AppLogger.d("转写", "准备上传文件到API")
+            
+            val apiKey = requireApiKey()
             
             // Retry up to 3 times for network errors (DNS resolution, timeout, etc.)
             var lastException: Exception? = null
@@ -517,7 +531,7 @@ class CallRecordRepository(
     /**
      * 生成会谈纪要
      */
-    suspend fun generateMeetingMinute(transcript: TranscriptEntity, record: CallRecordEntity, apiKey: String): Result<MeetingMinuteEntity> = withContext(Dispatchers.IO) {
+    suspend fun generateMeetingMinute(transcript: TranscriptEntity, record: CallRecordEntity): Result<MeetingMinuteEntity> = withContext(Dispatchers.IO) {
         try {
             AppLogger.i("生成纪要", "开始生成会谈纪要，转写ID: ${transcript.id}")
             AppLogger.d("生成纪要", "转写文本长度: ${transcript.fullText.length}字符")
@@ -570,6 +584,8 @@ class CallRecordRepository(
                 max_tokens = 8192
             )
 
+            val apiKey = requireApiKey()
+            
             AppLogger.i("生成纪要", "调用阶跃星辰LLM API")
             
             // Retry up to 3 times for network errors (DNS resolution, timeout, etc.)
@@ -945,7 +961,7 @@ ${transcript.fullText}
     /**
      * 为已转写的录音重新生成纪要
      */
-    suspend fun regenerateMinutesForTranscribed(apiKey: String): Result<Int> = withContext(Dispatchers.IO) {
+    suspend fun regenerateMinutesForTranscribed(): Result<Int> = withContext(Dispatchers.IO) {
         try {
             AppLogger.i("重新生成纪要", "开始检查已转写但没有纪要的录音")
             
@@ -966,7 +982,7 @@ ${transcript.fullText}
                     // 获取转写记录
                     val transcript = transcriptDao.getTranscriptById(record.transcriptId!!)
                     if (transcript != null && transcript.status == TranscriptStatus.COMPLETED) {
-                        generateMeetingMinute(transcript, record, apiKey)
+                        generateMeetingMinute(transcript, record)
                             .onSuccess {
                                 generatedCount++
                                 AppLogger.i("重新生成纪要", "成功为录音 ${record.fileName} 生成纪要")
@@ -991,8 +1007,7 @@ ${transcript.fullText}
      * Minutes are sorted by time and sent to step-3.5-flash with a dedicated prompt.
      */
     suspend fun generateTimelineBrief(
-        minutesWithContact: List<MinuteWithContact>,
-        apiKey: String
+        minutesWithContact: List<MinuteWithContact>
     ): Result<com.callrecord.manager.ui.screen.TimelineBriefResult> = withContext(Dispatchers.IO) {
         try {
             AppLogger.i("脉络简报", "开始生成脉络简报，共 ${minutesWithContact.size} 条纪要")
@@ -1070,6 +1085,8 @@ $minuteEntries
                 max_tokens = 8192
             )
 
+            val apiKey = requireApiKey()
+            
             saveApiLog("timeline_request", "纪要数量: ${sorted.size}\nPrompt长度: ${userPrompt.length}")
 
             // Retry up to 3 times for network errors
@@ -1165,6 +1182,40 @@ $minuteEntries
                 currentStatus = "JSON解析失败，请重试",
                 followUpSuggestions = listOf("建议重新选择纪要并生成简报")
             )
+        }
+    }
+
+    /**
+     * Update transcript text after user editing.
+     * Merges speakers into a single "Edited" segment and updates fullText.
+     */
+    suspend fun updateTranscriptText(transcriptId: Long, editedText: String): Result<TranscriptEntity> = withContext(Dispatchers.IO) {
+        try {
+            val transcript = transcriptDao.getTranscriptById(transcriptId)
+                ?: return@withContext Result.failure(Exception("转写记录不存在"))
+
+            val updatedSpeakers = listOf(
+                SpeakerSegment(
+                    speaker = "Edited",
+                    text = editedText,
+                    startTime = 0.0,
+                    endTime = 0.0
+                )
+            )
+
+            val updatedTranscript = transcript.copy(
+                fullText = editedText,
+                speakers = updatedSpeakers,
+                updateTime = System.currentTimeMillis()
+            )
+
+            transcriptDao.updateTranscript(updatedTranscript)
+            AppLogger.i("编辑转写", "转写内容已更新，ID: $transcriptId, 文本长度: ${editedText.length}")
+
+            Result.success(updatedTranscript)
+        } catch (e: Exception) {
+            AppLogger.e("编辑转写", "更新转写内容失败", e)
+            Result.failure(e)
         }
     }
 }

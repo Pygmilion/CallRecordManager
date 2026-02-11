@@ -20,14 +20,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        // 从 local.properties 读取 API Key
-        val properties = org.jetbrains.kotlin.konan.properties.Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            properties.load(localPropertiesFile.inputStream())
-        }
-        buildConfigField("String", "STEPFUN_API_KEY", "\"${properties.getProperty("STEPFUN_API_KEY", "")}\"")
     }
 
     buildTypes {

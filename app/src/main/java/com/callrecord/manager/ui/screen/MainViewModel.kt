@@ -8,6 +8,7 @@ import com.callrecord.manager.data.local.MinuteWithContact
 import com.callrecord.manager.data.local.RecordProcessStage
 import com.callrecord.manager.data.local.TranscriptEntity
 import android.content.Context
+import com.callrecord.manager.data.repository.ApiKeyProvider
 import com.callrecord.manager.data.repository.CallRecordRepository
 import com.callrecord.manager.ui.screen.TimelineBriefResult
 import com.callrecord.manager.utils.AppLogger
@@ -21,7 +22,6 @@ import kotlinx.coroutines.launch
  */
 class MainViewModel(
     private val repository: CallRecordRepository,
-    private val apiKey: String,
     private val appContext: Context? = null
 ) : ViewModel(), AppLogger.LogListener {
 
@@ -297,7 +297,7 @@ class MainViewModel(
             
             // 在后台协程中执行
             launch {
-                repository.transcribeRecord(record, apiKey)
+                repository.transcribeRecord(record)
                     .onSuccess { transcript ->
                         AppLogger.i("ViewModel", "转写成功，开始生成纪要（后台）")
                         updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_DONE)
@@ -323,7 +323,7 @@ class MainViewModel(
             AppLogger.i("ViewModel", "调用生成纪要（后台），转写ID: ${transcript.id}")
             appContext?.let { TaskNotificationHelper.showProgressNotification(it, "正在生成纪要", "纪要生成中...") }
             
-            repository.generateMeetingMinute(transcript, record, apiKey)
+            repository.generateMeetingMinute(transcript, record)
                 .onSuccess { minute ->
                     AppLogger.i("ViewModel", "纪要生成成功，ID: ${minute.id}")
                     updateRecordStage(record.id, RecordProcessStage.COMPLETED)
@@ -372,6 +372,26 @@ class MainViewModel(
     suspend fun getMinuteForRecord(record: CallRecordEntity): MeetingMinuteEntity? {
         val transcriptId = record.transcriptId ?: return null
         return repository.getMinuteByTranscriptId(transcriptId)
+    }
+
+    /**
+     * Save edited transcript text.
+     * Updates fullText and speakers in the database.
+     */
+    fun saveEditedTranscript(transcriptId: Long, editedText: String, onComplete: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            repository.updateTranscriptText(transcriptId, editedText)
+                .onSuccess {
+                    AppLogger.i("ViewModel", "转写内容已更新")
+                    _successMessage.value = "转写内容已更新"
+                    onComplete(true)
+                }
+                .onFailure { error ->
+                    AppLogger.e("ViewModel", "更新转写内容失败: ${error.message}", error)
+                    _errorMessage.value = "更新转写内容失败: ${error.message}"
+                    onComplete(false)
+                }
+        }
     }
 
     /**
@@ -484,7 +504,7 @@ class MainViewModel(
             
             AppLogger.i("ViewModel", "开始为已转写的录音重新生成纪要")
             
-            repository.regenerateMinutesForTranscribed(apiKey)
+            repository.regenerateMinutesForTranscribed()
                 .onSuccess { count ->
                     AppLogger.i("ViewModel", "成功生成 $count 个纪要")
                     _successMessage.value = "成功生成 $count 个纪要"
@@ -566,7 +586,7 @@ class MainViewModel(
             AppLogger.i("ViewModel", "开始转写录音（仅转写）: ${record.fileName}")
 
             launch {
-                repository.transcribeRecord(record, apiKey)
+                repository.transcribeRecord(record)
                     .onSuccess { _ ->
                         AppLogger.i("ViewModel", "转写完成（仅转写模式）")
                         updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_DONE)
@@ -589,7 +609,7 @@ class MainViewModel(
             _timelineBriefResult.value = TimelineBriefResult() // Reset
             AppLogger.i("ViewModel", "开始生成脉络简报，选中 ${selectedMinutes.size} 条纪要")
 
-            repository.generateTimelineBrief(selectedMinutes, apiKey)
+            repository.generateTimelineBrief(selectedMinutes)
                 .onSuccess { result ->
                     AppLogger.i("ViewModel", "脉络简报生成成功: ${result.title}")
                     _timelineBriefResult.value = result

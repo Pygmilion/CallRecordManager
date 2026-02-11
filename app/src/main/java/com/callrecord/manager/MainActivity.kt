@@ -29,6 +29,7 @@ import com.callrecord.manager.data.local.AppDatabase
 import com.callrecord.manager.data.local.CallRecordEntity
 import com.callrecord.manager.data.local.MeetingMinuteEntity
 import com.callrecord.manager.data.remote.ApiClient
+import com.callrecord.manager.data.repository.ApiKeyProvider
 import com.callrecord.manager.data.repository.CallRecordRepository
 import com.callrecord.manager.ui.screen.*
 import com.callrecord.manager.ui.theme.CallRecordManagerTheme
@@ -61,9 +62,11 @@ class MainActivity : ComponentActivity() {
         // 初始化数据库
         val database = AppDatabase.getDatabase(applicationContext)
         
-        // 初始化 API 服务
-        val apiKey = BuildConfig.STEPFUN_API_KEY
-        val apiService = ApiClient.createStepFunService(apiKey)
+        // Initialize API Key provider
+        ApiKeyProvider.init(applicationContext)
+        
+        // 初始化 API 服务 (API Key is now fetched dynamically per-request)
+        val apiService = ApiClient.createStepFunService { ApiKeyProvider.getApiKey() }
         
         // 初始化仓库
         val repository = CallRecordRepository(
@@ -84,7 +87,7 @@ class MainActivity : ComponentActivity() {
                         factory = object : androidx.lifecycle.ViewModelProvider.Factory {
                             override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
                                 @Suppress("UNCHECKED_CAST")
-                                return MainViewModel(repository, apiKey, applicationContext) as T
+                                return MainViewModel(repository, applicationContext) as T
                             }
                         }
                     )
@@ -264,7 +267,11 @@ fun MainApp(
     var selectedRecord by remember { mutableStateOf<CallRecordEntity?>(null) }
     var selectedMinute by remember { mutableStateOf<MeetingMinuteEntity?>(null) }
     var showTimelineBrief by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
+    // Transcript edit state
+    var editingTranscriptId by remember { mutableStateOf<Long?>(null) }
+    var editingTranscriptText by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
     // Audio receive screen
@@ -280,7 +287,7 @@ fun MainApp(
     val activeTaskDescription by viewModel.activeTaskDescription.collectAsState()
 
     // BackHandler: intercept back press when tasks are running
-    BackHandler(enabled = hasActiveTasks && selectedRecord == null && selectedMinute == null && !showTimelineBrief) {
+    BackHandler(enabled = hasActiveTasks && selectedRecord == null && selectedMinute == null && !showTimelineBrief && !showSettings) {
         showExitDialog = true
     }
 
@@ -340,10 +347,41 @@ fun MainApp(
     }
 
     if (selectedRecord != null) {
+        // Check if we're editing a transcript
+        if (editingTranscriptId != null) {
+            BackHandler(enabled = true) {
+                editingTranscriptId = null
+                editingTranscriptText = ""
+            }
+            TranscriptEditScreen(
+                initialText = editingTranscriptText,
+                onSave = { editedText ->
+                    viewModel.saveEditedTranscript(editingTranscriptId!!, editedText) { success ->
+                        if (success) {
+                            editingTranscriptId = null
+                            editingTranscriptText = ""
+                        }
+                    }
+                },
+                onBack = {
+                    editingTranscriptId = null
+                    editingTranscriptText = ""
+                }
+            )
+            return
+        }
+
         RecordDetailScreen(
             record = selectedRecord!!,
             viewModel = viewModel,
-            onBack = { selectedRecord = null }
+            onBack = { selectedRecord = null },
+            onEditTranscript = { transcriptId, currentText ->
+                editingTranscriptId = transcriptId
+                editingTranscriptText = currentText
+            },
+            onRegenerateMinute = { record ->
+                viewModel.retryGenerateMinute(record)
+            }
         )
         return
     }
@@ -372,6 +410,18 @@ fun MainApp(
             briefResult = timelineBriefResult,
             isLoading = isGeneratingBrief,
             onBack = { showTimelineBrief = false }
+        )
+        return
+    }
+
+    // BackHandler for SettingsScreen
+    BackHandler(enabled = showSettings) {
+        showSettings = false
+    }
+
+    if (showSettings) {
+        SettingsScreen(
+            onBack = { showSettings = false }
         )
         return
     }
@@ -445,6 +495,7 @@ fun MainApp(
                         viewModel = viewModel,
                         onRecordClick = { selectedRecord = it },
                         onPickAudioFile = onPickAudioFile,
+                        onSettingsClick = { showSettings = true },
                         onViewMinute = { record ->
                             coroutineScope.launch {
                                 val minute = viewModel.getMinuteForRecord(record)
@@ -457,6 +508,7 @@ fun MainApp(
                     1 -> MinuteListScreen(
                         viewModel = viewModel,
                         onMinuteClick = { selectedMinute = it },
+                        onSettingsClick = { showSettings = true },
                         onGenerateTimelineBrief = { selectedMinutes ->
                             viewModel.generateTimelineBrief(selectedMinutes)
                             showTimelineBrief = true

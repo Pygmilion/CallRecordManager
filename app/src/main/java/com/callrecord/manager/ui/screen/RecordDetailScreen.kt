@@ -34,7 +34,9 @@ import java.util.*
 fun RecordDetailScreen(
     record: CallRecordEntity,
     viewModel: MainViewModel? = null,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEditTranscript: ((transcriptId: Long, currentText: String) -> Unit)? = null,
+    onRegenerateMinute: ((record: CallRecordEntity) -> Unit)? = null
 ) {
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -321,6 +323,49 @@ fun RecordDetailScreen(
                                     modifier = Modifier.size(28.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Action buttons: Edit transcript & Regenerate minute
+            if (transcript != null && transcript!!.fullText.isNotBlank()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Edit transcript button
+                        if (onEditTranscript != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    onEditTranscript(transcript!!.id, transcript!!.fullText)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Edit, null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("编辑转写")
+                            }
+                        }
+                        // Regenerate minute button
+                        if (onRegenerateMinute != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    onRegenerateMinute(record)
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.AutoAwesome, null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("重新生成纪要")
                             }
                         }
                     }

@@ -38,6 +38,7 @@ fun RecordListScreen(
     viewModel: MainViewModel,
     onRecordClick: (CallRecordEntity) -> Unit,
     onPickAudioFile: () -> Unit,
+    onSettingsClick: () -> Unit = {},
     onViewMinute: (CallRecordEntity) -> Unit = {}
 ) {
     val records by viewModel.records.collectAsState()
@@ -85,6 +86,9 @@ fun RecordListScreen(
                         }
                         IconButton(onClick = onPickAudioFile) {
                             Icon(Icons.Outlined.Add, "添加文件")
+                        }
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Outlined.Settings, "设置")
                         }
                     },
                     colors = TopAppBarDefaults.largeTopAppBarColors(
