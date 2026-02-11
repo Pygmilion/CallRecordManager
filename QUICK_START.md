@@ -26,14 +26,9 @@ java -version
 - 创建 API Key
 - 复制密钥
 
-### 2. 配置到项目
-编辑文件：`CallRecordManager/local.properties`
-
-```properties
-STEPFUN_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-⚠️ **重要**：将 `sk-xxxxxxxxxxxxxxxxxxxxxxxx` 替换为你的真实 API Key
+### 2. 在 App 中配置
+> ⚠️ **v1.1.0 起**：API Key 已改为在 App 设置页面中配置。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
 
 ---
 

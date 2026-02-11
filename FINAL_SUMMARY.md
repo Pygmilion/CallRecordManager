@@ -200,7 +200,10 @@ open ALL_METHODS_SUMMARY.md
 
 ### API Key 已配置
 ```properties
-STEPFUN_API_KEY=***REMOVED_API_KEY***
+STEPFUN_API_KEY=your_api_key_here
+```
+
+> ⚠️ **注意**：v1.1.0 起 API Key 已改为在 App 设置页面中配置，无需在此处填写。
 ```
 在 `local.properties` 文件中
 

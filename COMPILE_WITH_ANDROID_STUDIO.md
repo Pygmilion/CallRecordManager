@@ -195,10 +195,8 @@ adb install /Users/natsusakai/Documents/CallRecordManager/app/build/outputs/apk/
    - 然后 Build → Rebuild Project
 
 3. **检查 API Key**
-   - 确认 `local.properties` 中有：
-     ```properties
-     STEPFUN_API_KEY=***REMOVED_API_KEY***
-     ```
+   - ⚠️ v1.1.0 起 API Key 已改为在 App 设置页面中配置
+   - 打开 App → 点击右上角齿轮图标 → 填写 API Key
 
 ---
 

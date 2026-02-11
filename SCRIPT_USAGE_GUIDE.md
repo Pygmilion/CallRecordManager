@@ -47,13 +47,8 @@ cd /Users/natsusakai/Documents/CallRecordManager
 nano local.properties
 ```
 
-在文件中添加或修改：
-```properties
-STEPFUN_API_KEY=sk-你的真实API密钥
-```
-
-按 `Control + X`，然后按 `Y`，最后按回车保存。
-
+> ⚠️ **v1.1.0 起**：API Key 已改为在 App 设置页面中配置，无需在 `local.properties` 中填写。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
 #### 步骤 4：运行安装脚本
 ```bash
 ./auto_install_and_build.sh
@@ -241,10 +236,8 @@ sdk.dir=/Users/你的用户名/Library/Android/sdk
 ### Q5: 编译时提示 API Key 错误
 
 **解决方案**：
-确保 `local.properties` 中有有效的 API Key：
-```properties
-STEPFUN_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
-```
+> v1.1.0 起 API Key 已改为在 App 设置页面中配置，无需在 `local.properties` 中填写。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
 
 ### Q6: adb 命令找不到
 

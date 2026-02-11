@@ -75,8 +75,8 @@ if [ -f "local.properties" ]; then
     fi
     
     # 检查 API Key
-    if grep -q "STEPFUN_API_KEY=sk-" local.properties || grep -q "STEPFUN_API_KEY=***REMOVED_PREFIX***" local.properties; then
-        echo "✅ API Key 已配置"
+    if grep -q "STEPFUN_API_KEY" local.properties; then
+        echo "✅ API Key 配置项已存在（注意：v1.1.0 起 API Key 已改为在 App 设置页面中配置）"
     else
         echo "⚠️  API Key 未配置或格式错误"
     fi

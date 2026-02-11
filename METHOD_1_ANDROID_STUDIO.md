@@ -94,7 +94,7 @@ API Key 已经配置好了，在 `local.properties` 文件中。
 如果需要修改：
 1. 在左侧项目树中找到 `local.properties`
 2. 双击打开
-3. 确认有：`STEPFUN_API_KEY=***REMOVED_API_KEY***`
+3. ⚠️ v1.1.0 起 API Key 已改为在 App 设置页面中配置，无需在此文件中配置
 
 ---
 

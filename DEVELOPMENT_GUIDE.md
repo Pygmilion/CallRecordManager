@@ -45,15 +45,13 @@ java -version
 4. 等待 Gradle 同步完成
 
 ### 2. 配置 API Key
-编辑 `local.properties` 文件：
-```properties
-STEPFUN_API_KEY=你的阶跃星辰API密钥
-```
+
+> ⚠️ **v1.1.0 起**：API Key 已改为在 App 设置页面中配置，无需在文件中填写。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
 
 获取 API Key：
 - 访问：https://platform.stepfun.com/
 - 注册账号并创建 API Key
-- 手机号：18565659040（如需注册）
 
 ### 3. 同步 Gradle
 点击 Android Studio 顶部的 "Sync Project with Gradle Files" 按钮
@@ -171,8 +169,8 @@ CallRecordManager/
 ```
 
 ### 2. API Key 未配置
-**问题**：BuildConfig.STEPFUN_API_KEY 为空
-**解决**：确保 `local.properties` 中正确配置了 API Key
+**问题**：转写或纪要功能报错
+**解决**：在 App 设置页面中配置 API Key（点击右上角⚙️图标）
 
 ### 3. 权限被拒绝
 **问题**：无法读取录音文件

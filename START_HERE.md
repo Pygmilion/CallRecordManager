@@ -32,12 +32,8 @@ cd /Users/natsusakai/Documents/CallRecordManager
 nano local.properties
 ```
 
-添加你的 API Key：
-```properties
-STEPFUN_API_KEY=sk-你的真实密钥
-```
-
-保存：按 `Control + X`，然后 `Y`，最后回车
+> ⚠️ **v1.1.0 起**：API Key 已改为在 App 设置页面中配置，无需在 `local.properties` 中填写。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
 
 ### 第二步：运行自动安装脚本
 

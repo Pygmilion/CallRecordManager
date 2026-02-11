@@ -34,20 +34,14 @@
 
 ### 2. 配置 API Key
 
-编辑项目中的 `local.properties` 文件：
-
-```properties
-# 阶跃星辰 API Key
-STEPFUN_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-⚠️ **重要**：将 `sk-xxxxxxxxxxxxxxxxxxxxxxxx` 替换为你的真实 API Key
+> ⚠️ **v1.1.0 起**：API Key 已改为在 App 设置页面中配置。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
 
 获取 API Key：
 1. 访问：https://platform.stepfun.com/
 2. 注册账号（可用手机号：18565659040）
 3. 创建 API Key
-4. 复制并粘贴到 `local.properties`
+4. 复制并粘贴到 App 设置页面
 
 ---
 
@@ -347,10 +341,7 @@ C:\Users\你的用户名\AppData\Local\Android\Sdk
 **问题**：API Key 未配置
 
 **解决方案**：
-确保 `local.properties` 中有：
-```properties
-STEPFUN_API_KEY=你的真实API密钥
-```
+> v1.1.0 起 API Key 已改为在 App 设置页面中配置，无需在编译时配置。
 
 ### Q4: 手机无法安装 APK
 

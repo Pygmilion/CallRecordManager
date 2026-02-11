@@ -191,24 +191,21 @@ sdk.dir=$HOME/Library/Android/sdk
 # 阶跃星辰 API Key
 # 请在下方填写你的 API Key
 STEPFUN_API_KEY=
+"
 EOF
-        print_warning "请编辑 local.properties 文件，填写你的 STEPFUN_API_KEY"
-        print_info "获取 API Key: https://platform.stepfun.com/"
-        exit 1
+        print_warning "v1.1.0 起 API Key 已改为在 App 设置页面中配置"
+        print_info "获取 API Key: https://platform.stepfun.com/"        exit 1
     fi
     
-    if ! grep -q "STEPFUN_API_KEY=sk-" local.properties; then
-        print_warning "未找到有效的 API Key 配置"
-        print_info "请在 local.properties 中配置 STEPFUN_API_KEY"
+    if ! grep -q "STEPFUN_API_KEY" local.properties; then
+        print_warning "v1.1.0 起 API Key 已改为在 App 设置页面中配置，可以跳过此步骤"
         print_info "获取 API Key: https://platform.stepfun.com/"
-        
-        # 添加 SDK 路径（如果没有）
-        if ! grep -q "sdk.dir" local.properties; then
-            echo "" >> local.properties
-            echo "sdk.dir=$HOME/Library/Android/sdk" >> local.properties
-        fi
-        
-        exit 1
+    fi
+    
+    # 添加 SDK 路径（如果没有）
+    if ! grep -q "sdk.dir" local.properties; then
+        echo "" >> local.properties
+        echo "sdk.dir=$HOME/Library/Android/sdk" >> local.properties
     fi
     
     # 确保有 SDK 路径

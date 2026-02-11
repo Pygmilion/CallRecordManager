@@ -181,10 +181,11 @@
 ```
 
 ### 2. 配置 API Key
-编辑 `local.properties`：
-```properties
-STEPFUN_API_KEY=你的API密钥
-```
+
+> ⚠️ **v1.1.0 起**：API Key 已改为在 App 设置页面中配置。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
+>
+> 无需再在 `local.properties` 中填写 API Key。
 
 ### 3. 运行应用
 ```bash

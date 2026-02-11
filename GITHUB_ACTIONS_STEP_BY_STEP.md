@@ -57,7 +57,9 @@ gh repo create CallRecordManager --public --source=. --remote=origin
 4. 点击 "New repository secret"
 5. 填写：
    - **Name**: `STEPFUN_API_KEY`
-   - **Secret**: `***REMOVED_API_KEY***`
+   - **Secret**: `your_api_key_here`
+
+> ⚠️ **注意**：v1.1.0 起 API Key 已改为在 App 设置页面中配置，GitHub Actions Secret 仅用于编译兼容，实际使用时请在 App 内设置。
 6. 点击 "Add secret"
 
 ---

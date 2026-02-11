@@ -51,10 +51,9 @@ app/
 4. 运行到设备或模拟器
 
 ## API 配置
-在 `local.properties` 中添加：
-```properties
-STEPFUN_API_KEY=your_api_key_here
-```
+
+> ⚠️ **v1.1.0 起**：API Key 已改为在 App 设置页面中配置，无需在 `local.properties` 中填写。
+> 打开 App → 点击右上角⚙️齿轮图标 → 填写你的 API Key
 
 ## 开发进度
 - [x] 项目框架搭建

@@ -15,10 +15,9 @@ if [ ! -f "settings.gradle.kts" ]; then
 fi
 
 # 检查 API Key
-if ! grep -q "STEPFUN_API_KEY=sk-" local.properties 2>/dev/null; then
-    echo "⚠️  警告: 未找到有效的 API Key"
-    echo "请在 local.properties 中配置 STEPFUN_API_KEY"
-    exit 1
+if ! grep -q "STEPFUN_API_KEY" local.properties 2>/dev/null; then
+    echo "⚠️  提示: local.properties 中未配置 STEPFUN_API_KEY"
+    echo "⚠️  v1.1.0 起 API Key 已改为在 App 设置页面中配置，可以继续编译"
 fi
 
 # 清理
