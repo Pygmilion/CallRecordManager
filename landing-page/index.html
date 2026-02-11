@@ -46,9 +46,9 @@
                     让每次通话<br>
                     <span class="gradient-text">不再遗忘</span>
                 </h1>
-                <p class="hero-subtitle">
+                    <p class="hero-subtitle">
                     自动扫描通话录音，AI 语音转写 + 智能纪要生成。<br>
-                    关键信息、待办事项、事件脉络，一目了然。
+                    按联系人折叠分组，支持转写编辑，关键信息一目了然。
                 </p>
                 <div class="hero-actions">
                     <a href="#download" class="btn btn-primary">
@@ -94,33 +94,39 @@
                                     <img src="images/logo.png" alt="icon" class="app-preview-icon">
                                     <div>
                                         <div class="app-preview-title">语音快记</div>
-                                        <div class="app-preview-sub">3 条录音 · 2 条纪要</div>
+                        <div class="app-preview-sub">5 条录音 · 3 条纪要</div>
                                     </div>
                                 </div>
-                                <div class="app-preview-cards">
+                <div class="app-preview-cards">
+                                    <div class="preview-group-header" style="display:flex;align-items:center;gap:6px;padding:4px 2px;">
+                                        <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:white;flex-shrink:0;">张</div>
+                                        <div style="flex:1;">
+                                            <div style="font-size:0.6rem;font-weight:700;color:#fafafa;">张经理 <span style="font-size:0.48rem;color:#71717A;font-weight:400;">（3）</span></div>
+                                        </div>
+                                        <div style="font-size:0.5rem;color:#71717A;">▼</div>
+                                    </div>
                                     <div class="preview-card">
                                         <div class="preview-card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)">🎙</div>
                                         <div class="preview-card-info">
-                                            <div class="preview-card-name">张经理 · 项目沟通</div>
-                                            <div class="preview-card-meta">5:32 · 已转写</div>
+                                            <div class="preview-card-name">5:32 · 2026-02-07</div>
+                                            <div class="preview-card-meta">已转写 · 已生成纪要</div>
                                         </div>
                                         <div class="preview-card-badge done">✓</div>
                                     </div>
                                     <div class="preview-card">
-                                        <div class="preview-card-icon" style="background:linear-gradient(135deg,#f093fb,#f5576c)">📞</div>
+                                        <div class="preview-card-icon" style="background:linear-gradient(135deg,#667eea,#764ba2)">📞</div>
                                         <div class="preview-card-info">
-                                            <div class="preview-card-name">李总 · 合同确认</div>
-                                            <div class="preview-card-meta">3:18 · 生成纪要中</div>
+                                            <div class="preview-card-name">3:18 · 2026-02-06</div>
+                                            <div class="preview-card-meta">已转写</div>
                                         </div>
-                                        <div class="preview-card-badge pending">⋯</div>
+                                        <div class="preview-card-badge done">✓</div>
                                     </div>
-                                    <div class="preview-card">
-                                        <div class="preview-card-icon" style="background:linear-gradient(135deg,#4facfe,#00f2fe)">📱</div>
-                                        <div class="preview-card-info">
-                                            <div class="preview-card-name">王工 · 技术评审</div>
-                                            <div class="preview-card-meta">8:45 · 待处理</div>
+                                    <div class="preview-group-header" style="display:flex;align-items:center;gap:6px;padding:4px 2px;margin-top:4px;">
+                                        <div style="width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#f093fb,#f5576c);display:flex;align-items:center;justify-content:center;font-size:0.5rem;color:white;flex-shrink:0;">李</div>
+                                        <div style="flex:1;">
+                                            <div style="font-size:0.6rem;font-weight:700;color:#fafafa;">李总 <span style="font-size:0.48rem;color:#71717A;font-weight:400;">（2）</span></div>
                                         </div>
-                                        <div class="preview-card-badge new">NEW</div>
+                                        <div style="font-size:0.5rem;color:#71717A;">▶</div>
                                     </div>
                                 </div>
                             </div>
@@ -147,7 +153,7 @@
                         </svg>
                     </div>
                     <h3>录音扫描</h3>
-                    <p>自动扫描手机中的通话录音，支持小米、华为、OPPO 等品牌，兼容 m4a/amr/mp3/wav 等多种格式。按联系人智能分组。</p>
+                    <p>自动扫描手机中的通话录音，支持小米、华为、OPPO 等品牌，兼容 m4a/amr/mp3/wav 等多种格式。按联系人智能分组，支持折叠/展开。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-play">
@@ -228,13 +234,14 @@
                     <p>纪要导出为 Markdown 文本或 TXT 文件，通过系统分享发送至微信、邮件等任意渠道。</p>
                 </div>
                 <div class="feature-card">
-                    <div class="feature-icon icon-secure">
+                <div class="feature-icon icon-secure">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                            <circle cx="12" cy="7" r="4"/>
                         </svg>
                     </div>
-                    <h3>隐私安全</h3>
-                    <p>所有数据存储在本地 Room 数据库，不上传任何个人信息。后台任务有通知提醒，退出保护防止误中断。</p>
+                    <h3>联系人管理</h3>
+                    <p>支持手动编辑联系人名称，方便管理仅有手机号的录音记录。编辑后同一号码的所有录音自动归档到新名称下。</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon icon-settings" style="background:linear-gradient(135deg,#a8edea,#fed6e3)">
@@ -331,22 +338,27 @@
                                 <span class="sm-topbar-action">🔍</span>
                             </div>
                             <div class="sm-body">
-                                <div class="sm-group-label">张经理（3）</div>
-                                <div class="sm-record-item">
-                                    <div class="sm-rec-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)"></div>
-                                    <div class="sm-rec-info"><div class="sm-rec-name">项目沟通</div><div class="sm-rec-meta">5:32 · 2026-02-07</div></div>
-                                    <div class="sm-rec-status done">✓ 完成</div>
+                                <div class="sm-group-header" style="display:flex;align-items:center;gap:6px;padding:4px;cursor:pointer;">
+                                    <div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;font-size:0.42rem;color:white;">张</div>
+                                    <div style="flex:1;"><span class="sm-rec-name">张经理</span> <span style="font-size:0.48rem;color:#71717A;">（3）</span></div>
+                                    <span style="font-size:0.55rem;color:#71717A;margin-left:auto;">✏️</span>
+                                    <span style="font-size:0.42rem;color:#71717A;">▼</span>
                                 </div>
                                 <div class="sm-record-item">
                                     <div class="sm-rec-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)"></div>
-                                    <div class="sm-rec-info"><div class="sm-rec-name">需求确认</div><div class="sm-rec-meta">3:18 · 2026-02-06</div></div>
-                                    <div class="sm-rec-status done">✓ 完成</div>
+                                    <div class="sm-rec-info"><div class="sm-rec-name">5:32</div><div class="sm-rec-meta">2026-02-07 14:30</div></div>
+                                    <div class="sm-rec-status done">✓</div>
                                 </div>
-                                <div class="sm-group-label">李总（2）</div>
                                 <div class="sm-record-item">
-                                    <div class="sm-rec-avatar" style="background:linear-gradient(135deg,#f093fb,#f5576c)"></div>
-                                    <div class="sm-rec-info"><div class="sm-rec-name">合同确认</div><div class="sm-rec-meta">2:45 · 2026-02-05</div></div>
-                                    <div class="sm-rec-status pending">⋯ 转写中</div>
+                                    <div class="sm-rec-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)"></div>
+                                    <div class="sm-rec-info"><div class="sm-rec-name">3:18</div><div class="sm-rec-meta">2026-02-06 09:15</div></div>
+                                    <div class="sm-rec-status done">✓</div>
+                                </div>
+                                <div class="sm-group-header" style="display:flex;align-items:center;gap:6px;padding:4px;cursor:pointer;margin-top:4px;">
+                                    <div style="width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,#f093fb,#f5576c);display:flex;align-items:center;justify-content:center;font-size:0.42rem;color:white;">李</div>
+                                    <div style="flex:1;"><span class="sm-rec-name">李总</span> <span style="font-size:0.48rem;color:#71717A;">（2）</span></div>
+                                    <span style="font-size:0.55rem;color:#71717A;margin-left:auto;">✏️</span>
+                                    <span style="font-size:0.42rem;color:#71717A;">▶</span>
                                 </div>
                             </div>
                             <div class="sm-fab">＋</div>
