@@ -624,6 +624,23 @@ class MainViewModel(
     }
 
     /**
+     * Update contact name for all records with the given phone number.
+     */
+    fun updateContactName(phoneNumber: String, newName: String) {
+        viewModelScope.launch {
+            repository.updateContactName(phoneNumber, newName)
+                .onSuccess {
+                    AppLogger.i("ViewModel", "联系人名称已更新: $phoneNumber -> $newName")
+                    _successMessage.value = "联系人名称已更新"
+                }
+                .onFailure { error ->
+                    AppLogger.e("ViewModel", "更新联系人名称失败: ${error.message}", error)
+                    _errorMessage.value = "更新联系人名称失败: ${error.message}"
+                }
+        }
+    }
+
+    /**
      * 获取日志文件路径
      */
     fun getLogFilePath(): String? {

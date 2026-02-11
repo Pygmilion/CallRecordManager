@@ -169,12 +169,13 @@ fun MinuteDetailScreen(
                         title = "参与者",
                     accentColor = StatusColors.pending
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             minute.participants.forEach { participant ->
                                 Surface(
+                                    modifier = Modifier.fillMaxWidth(),
                                     shape = StatusTagShape,
                                     color = MaterialTheme.colorScheme.secondaryContainer
                                 ) {

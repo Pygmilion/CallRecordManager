@@ -1,7 +1,14 @@
 package com.callrecord.manager.ui.screen
 
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -50,10 +58,26 @@ fun RecordListScreen(
     var showSearchBar by remember { mutableStateOf(false) }
     var showLogDialog by remember { mutableStateOf(false) }
 
+    // Edit contact name dialog state
+    var showEditContactDialog by remember { mutableStateOf(false) }
+    var editingPhoneNumber by remember { mutableStateOf<String?>(null) }
+    var editingCurrentName by remember { mutableStateOf("") }
+
     // Group by contact
     val groupedRecords = remember(records) {
         records.groupBy { record ->
             record.contactName ?: record.phoneNumber ?: "未知联系人"
+        }
+    }
+
+    // Expand/collapse state: default all expanded
+    var expandedGroups by remember { mutableStateOf(groupedRecords.keys.toSet()) }
+
+    // Sync expanded groups when groupedRecords changes
+    LaunchedEffect(groupedRecords.keys) {
+        val newKeys = groupedRecords.keys - expandedGroups
+        if (newKeys.isNotEmpty()) {
+            expandedGroups = expandedGroups + newKeys
         }
     }
 
@@ -143,25 +167,48 @@ fun RecordListScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         groupedRecords.forEach { (contactName, recordsInGroup) ->
+                            val isSearching = searchQuery.isNotEmpty()
+                            val isExpanded = isSearching || expandedGroups.contains(contactName)
+                            val firstRecord = recordsInGroup.firstOrNull()
+                            val phoneNumber = firstRecord?.phoneNumber
+
                             // Group header
                             item(key = "header_$contactName") {
                                 ContactGroupHeader(
                                     contactName = contactName,
-                                    count = recordsInGroup.size
+                                    count = recordsInGroup.size,
+                                    isExpanded = isExpanded,
+                                    onToggle = {
+                                        if (!isSearching) {
+                                            expandedGroups = if (isExpanded) {
+                                                expandedGroups - contactName
+                                            } else {
+                                                expandedGroups + contactName
+                                            }
+                                        }
+                                    },
+                                    phoneNumber = phoneNumber,
+                                    onEditContactName = {
+                                        editingPhoneNumber = phoneNumber
+                                        editingCurrentName = firstRecord?.contactName ?: ""
+                                        showEditContactDialog = true
+                                    }
                                 )
                             }
 
-                            // Records in group
-                            items(recordsInGroup, key = { it.id }) { record ->
-                                BrandRecordItem(
-                                    record = record,
-                                    onClick = { onRecordClick(record) },
-                                    onTranscribe = { viewModel.transcribeRecord(record) },
-                                    onDelete = { viewModel.deleteRecord(record) },
-                                    onRetryMinute = { viewModel.retryGenerateMinute(record) },
-                                    onViewMinute = { onViewMinute(record) },
-                                    processStage = recordProcessStages[record.id] ?: RecordProcessStage.IDLE
-                                )
+                            // Records in group with AnimatedVisibility
+                            if (isExpanded) {
+                                items(recordsInGroup, key = { it.id }) { record ->
+                                    BrandRecordItem(
+                                        record = record,
+                                        onClick = { onRecordClick(record) },
+                                        onTranscribe = { viewModel.transcribeRecord(record) },
+                                        onDelete = { viewModel.deleteRecord(record) },
+                                        onRetryMinute = { viewModel.retryGenerateMinute(record) },
+                                        onViewMinute = { onViewMinute(record) },
+                                        processStage = recordProcessStages[record.id] ?: RecordProcessStage.IDLE
+                                    )
+                                }
                             }
                         }
                     }
@@ -177,17 +224,49 @@ fun RecordListScreen(
                 onDismiss = { showLogDialog = false }
             )
         }
+
+        // Edit contact name dialog
+        if (showEditContactDialog && editingPhoneNumber != null) {
+            EditContactNameDialog(
+                phoneNumber = editingPhoneNumber!!,
+                currentName = editingCurrentName,
+                onConfirm = { newName ->
+                    viewModel.updateContactName(editingPhoneNumber!!, newName)
+                    showEditContactDialog = false
+                    editingPhoneNumber = null
+                    editingCurrentName = ""
+                },
+                onDismiss = {
+                    showEditContactDialog = false
+                    editingPhoneNumber = null
+                    editingCurrentName = ""
+                }
+            )
+        }
     }
 }
 
 /**
- * Contact group header with avatar placeholder
+ * Contact group header with avatar placeholder, expand/collapse toggle, and optional edit button
  */
 @Composable
-fun ContactGroupHeader(contactName: String, count: Int) {
+fun ContactGroupHeader(
+    contactName: String,
+    count: Int,
+    isExpanded: Boolean = true,
+    onToggle: () -> Unit = {},
+    phoneNumber: String? = null,
+    onEditContactName: () -> Unit = {}
+) {
+    val rotationAngle by animateFloatAsState(
+        targetValue = if (isExpanded) 0f else -90f,
+        label = "chevron_rotation"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onToggle() }
             .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -210,7 +289,10 @@ fun ContactGroupHeader(contactName: String, count: Int) {
         Text(
             text = contactName,
             style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
@@ -218,6 +300,37 @@ fun ContactGroupHeader(contactName: String, count: Int) {
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        // Expand/collapse chevron
+        Icon(
+            Icons.Default.ExpandMore,
+            contentDescription = if (isExpanded) "折叠" else "展开",
+            modifier = Modifier
+                .size(24.dp)
+                .rotate(rotationAngle),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // Edit button for all contacts
+        // Placed after chevron, with dedicated clickable to avoid being intercepted by Row's clickable
+        if (phoneNumber != null) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+                onClick = onEditContactName
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = "编辑联系人名称",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -274,19 +387,13 @@ fun BrandRecordItem(
             // Middle info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = record.contactName ?: record.phoneNumber ?: "未知联系人",
+                    text = dateFormat.format(Date(record.recordTime)),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = dateFormat.format(Date(record.recordTime)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = formatDuration(record.duration),
                         style = MaterialTheme.typography.bodySmall,
@@ -655,6 +762,60 @@ fun LogDialog(
         confirmButton = {
             TextButton(onClick = onDismiss) {
                 Text("关闭")
+            }
+        }
+    )
+}
+
+/**
+ * Dialog for editing contact name when only phone number is available
+ */
+@Composable
+fun EditContactNameDialog(
+    phoneNumber: String,
+    currentName: String = "",
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var inputName by remember { mutableStateOf(currentName) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = DialogShape,
+        title = {
+            Text("编辑联系人名称", style = MaterialTheme.typography.titleLarge)
+        },
+        text = {
+            Column {
+                Text(
+                    text = "手机号: $phoneNumber",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = inputName,
+                    onValueChange = { inputName = it },
+                    label = { Text("联系人名称") },
+                    placeholder = { Text("请输入联系人名称") },
+                    singleLine = true,
+                    shape = SearchBarShape,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(inputName.trim()) },
+                enabled = inputName.isNotBlank(),
+                shape = ButtonShape
+            ) {
+                Text("确认")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
             }
         }
     )

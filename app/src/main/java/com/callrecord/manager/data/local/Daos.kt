@@ -40,6 +40,9 @@ interface CallRecordDao {
 
     @Query("SELECT * FROM call_records")
     suspend fun getAllRecordsOnce(): List<CallRecordEntity>
+
+    @Query("UPDATE call_records SET contactName = :newName WHERE phoneNumber = :phoneNumber")
+    suspend fun updateContactNameByPhone(phoneNumber: String, newName: String)
 }
 
 /**

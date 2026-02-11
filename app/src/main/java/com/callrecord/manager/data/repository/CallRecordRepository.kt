@@ -1186,6 +1186,20 @@ $minuteEntries
     }
 
     /**
+     * Update contact name for all records with the given phone number.
+     */
+    suspend fun updateContactName(phoneNumber: String, newName: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            callRecordDao.updateContactNameByPhone(phoneNumber, newName)
+            AppLogger.i("编辑联系人", "已将手机号 $phoneNumber 的联系人名称更新为: $newName")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            AppLogger.e("编辑联系人", "更新联系人名称失败", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Update transcript text after user editing.
      * Merges speakers into a single "Edited" segment and updates fullText.
      */
