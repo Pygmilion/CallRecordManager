@@ -2,20 +2,28 @@ package com.callrecord.manager.ui.screen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import com.callrecord.manager.data.local.CallRecordEntity
 import com.callrecord.manager.data.local.MeetingMinuteEntity
 import com.callrecord.manager.data.local.MinuteWithContact
 import com.callrecord.manager.data.local.RecordProcessStage
 import com.callrecord.manager.data.local.TranscriptEntity
+import com.callrecord.manager.data.local.TranscriptStatus
 import android.content.Context
 import com.callrecord.manager.data.repository.ApiKeyProvider
 import com.callrecord.manager.data.repository.CallRecordRepository
 import com.callrecord.manager.ui.screen.TimelineBriefResult
 import com.callrecord.manager.utils.AppLogger
 import com.callrecord.manager.utils.TaskNotificationHelper
+import com.callrecord.manager.work.TranscriptionWorkScheduler
+import com.callrecord.manager.work.TranscriptionWorker
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 主页 ViewModel
@@ -63,6 +71,7 @@ class MainViewModel(
     private var loadMinutesWithContactJob: Job? = null
     private var searchRecordsJob: Job? = null
     private var searchMinutesJob: Job? = null
+    private var queueStageSyncJob: Job? = null
 
     // 日志信息列表（用于调试）
     private val _logMessages = MutableStateFlow<List<String>>(emptyList())
@@ -72,9 +81,9 @@ class MainViewModel(
     private val _recordProcessStages = MutableStateFlow<Map<Long, RecordProcessStage>>(emptyMap())
     val recordProcessStages: StateFlow<Map<Long, RecordProcessStage>> = _recordProcessStages.asStateFlow()
 
-    // Pending shared file for AudioReceiveScreen
-    private val _pendingShareFile = MutableStateFlow<PendingShareFile?>(null)
-    val pendingShareFile: StateFlow<PendingShareFile?> = _pendingShareFile.asStateFlow()
+    // Pending shared files for AudioReceiveScreen (supports batch share)
+    private val _pendingShareFiles = MutableStateFlow<List<PendingShareFile>>(emptyList())
+    val pendingShareFiles: StateFlow<List<PendingShareFile>> = _pendingShareFiles.asStateFlow()
 
     // Error message for the AudioReceiveScreen
     private val _shareError = MutableStateFlow<String?>(null)
@@ -88,32 +97,6 @@ class MainViewModel(
     private val _isGeneratingBrief = MutableStateFlow(false)
     val isGeneratingBrief: StateFlow<Boolean> = _isGeneratingBrief.asStateFlow()
 
-    // Whether any background task is currently active (for global task banner & back press guard)
-    val hasActiveTasks: StateFlow<Boolean> = combine(
-        _recordProcessStages,
-        _isGeneratingBrief
-    ) { stages, generatingBrief ->
-        generatingBrief || stages.values.any {
-            it == RecordProcessStage.TRANSCRIBING || it == RecordProcessStage.GENERATING_MINUTE
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    // Human-readable description of the active task (for banner text)
-    val activeTaskDescription: StateFlow<String> = combine(
-        _recordProcessStages,
-        _isGeneratingBrief
-    ) { stages, generatingBrief ->
-        val activeStages = stages.filter {
-            it.value == RecordProcessStage.TRANSCRIBING || it.value == RecordProcessStage.GENERATING_MINUTE
-        }
-        when {
-            generatingBrief -> "正在生成脉络简报..."
-            activeStages.any { it.value == RecordProcessStage.GENERATING_MINUTE } -> "正在生成会谈纪要..."
-            activeStages.any { it.value == RecordProcessStage.TRANSCRIBING } -> "正在转写录音..."
-            else -> ""
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-
     init {
         // 注册日志监听
         AppLogger.addListener(this)
@@ -125,6 +108,7 @@ class MainViewModel(
     
     override fun onCleared() {
         super.onCleared()
+        queueStageSyncJob?.cancel()
         AppLogger.removeListener(this)
         AppLogger.i("ViewModel", "MainViewModel 销毁")
     }
@@ -149,6 +133,12 @@ class MainViewModel(
         }
     }
 
+    private enum class TranscriptionWorkState {
+        NONE,
+        QUEUED,
+        RUNNING
+    }
+
     /**
      * 加载录音列表
      */
@@ -164,24 +154,36 @@ class MainViewModel(
     }
 
     /**
-     * Restore process stages from database state.
-     * Only set stage for records NOT currently being actively processed.
+     * Restore process stages from database + WorkManager states.
      */
     private suspend fun restoreProcessStages(records: List<CallRecordEntity>) {
-        val currentStages = _recordProcessStages.value.toMutableMap()
+        val rebuiltStages = mutableMapOf<Long, RecordProcessStage>()
+
         for (record in records) {
-            // Skip records that are currently in an active processing state
-            val currentStage = currentStages[record.id]
-            if (currentStage != null && currentStage in listOf(
-                    RecordProcessStage.TRANSCRIBING,
-                    RecordProcessStage.GENERATING_MINUTE
-                )
-            ) {
-                continue
-            }
+            val workState = getTranscriptionWorkState(record.id)
+            val hasActiveWork = workState != TranscriptionWorkState.NONE
+            val transcript = repository.repairOrphanProcessingTranscript(
+                recordId = record.id,
+                hasActiveWork = hasActiveWork
+            )
 
             val stage = if (!record.isTranscribed) {
-                RecordProcessStage.IDLE
+                when (transcript?.status) {
+                    TranscriptStatus.PROCESSING, TranscriptStatus.PENDING -> {
+                        when (workState) {
+                            TranscriptionWorkState.RUNNING -> RecordProcessStage.TRANSCRIBING
+                            TranscriptionWorkState.QUEUED -> RecordProcessStage.QUEUED
+                            TranscriptionWorkState.NONE -> RecordProcessStage.TRANSCRIBE_FAILED
+                        }
+                    }
+                    TranscriptStatus.FAILED -> RecordProcessStage.TRANSCRIBE_FAILED
+                    TranscriptStatus.COMPLETED -> RecordProcessStage.TRANSCRIBE_DONE
+                    null -> when (workState) {
+                        TranscriptionWorkState.RUNNING -> RecordProcessStage.TRANSCRIBING
+                        TranscriptionWorkState.QUEUED -> RecordProcessStage.QUEUED
+                        TranscriptionWorkState.NONE -> RecordProcessStage.IDLE
+                    }
+                }
             } else {
                 // Record is transcribed, check if minute exists
                 val transcriptId = record.transcriptId
@@ -190,15 +192,46 @@ class MainViewModel(
                     if (minute != null) {
                         RecordProcessStage.COMPLETED
                     } else {
-                        RecordProcessStage.TRANSCRIBE_DONE
+                        when (workState) {
+                            TranscriptionWorkState.RUNNING -> RecordProcessStage.GENERATING_MINUTE
+                            TranscriptionWorkState.QUEUED -> RecordProcessStage.QUEUED
+                            TranscriptionWorkState.NONE -> RecordProcessStage.TRANSCRIBE_DONE
+                        }
                     }
                 } else {
                     RecordProcessStage.TRANSCRIBE_DONE
                 }
             }
-            currentStages[record.id] = stage
+
+            rebuiltStages[record.id] = stage
         }
-        _recordProcessStages.value = currentStages
+
+        // Rebuild by current record IDs only to avoid stale deleted-record stages.
+        _recordProcessStages.value = rebuiltStages
+        scheduleQueueStageSync()
+    }
+
+    private suspend fun getTranscriptionWorkState(recordId: Long): TranscriptionWorkState {
+        val context = appContext ?: return TranscriptionWorkState.NONE
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                WorkManager.getInstance(context)
+                    .getWorkInfosByTag(TranscriptionWorker.recordTag(recordId))
+                    .get()
+                    .let { infos ->
+                        when {
+                            infos.any { info -> info.state == WorkInfo.State.RUNNING } -> TranscriptionWorkState.RUNNING
+                            infos.any { info ->
+                                info.state == WorkInfo.State.ENQUEUED ||
+                                    info.state == WorkInfo.State.BLOCKED
+                            } -> TranscriptionWorkState.QUEUED
+                            else -> TranscriptionWorkState.NONE
+                        }
+                    }
+            }.onFailure { e ->
+                AppLogger.w("ViewModel", "查询后台任务状态失败: recordId=$recordId", e)
+            }.getOrDefault(TranscriptionWorkState.NONE)
+        }
     }
 
     /**
@@ -210,6 +243,8 @@ class MainViewModel(
         loadMinutesJob = viewModelScope.launch {
             repository.getAllMinutes().collect { minutes ->
                 _minutes.value = minutes
+                // Minute changes do not trigger call_records Flow; refresh record stages here as well.
+                restoreProcessStages(_records.value)
             }
         }
         loadMinutesWithContactJob = viewModelScope.launch {
@@ -250,7 +285,7 @@ class MainViewModel(
             _errorMessage.value = null
             
             repository.importAudioFile(filePath, fileName)
-                .onSuccess { record ->
+                .onSuccess { _ ->
                     _errorMessage.value = null
                     _successMessage.value = "文件导入成功"
                 }
@@ -288,29 +323,35 @@ class MainViewModel(
      * 转写录音（后台执行）
      */
     fun transcribeRecord(record: CallRecordEntity) {
-        viewModelScope.launch {
-            // Update stage to TRANSCRIBING
-            updateRecordStage(record.id, RecordProcessStage.TRANSCRIBING)
-            
-            AppLogger.i("ViewModel", "开始转写录音（后台）: ${record.fileName}")
-            appContext?.let { TaskNotificationHelper.showProgressNotification(it, "正在转写", "转写中: ${record.fileName}") }
-            
-            // 在后台协程中执行
-            launch {
-                repository.transcribeRecord(record)
-                    .onSuccess { transcript ->
-                        AppLogger.i("ViewModel", "转写成功，开始生成纪要（后台）")
-                        updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_DONE)
-                        // 自动生成纪要（也在后台），传入 record
-                        generateMinute(transcript, record)
-                    }
-                    .onFailure { error ->
-                        AppLogger.e("ViewModel", "转写失败: ${error.message}", error)
-                        updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_FAILED)
-                        _errorMessage.value = "转写失败: ${error.message}"
-                        appContext?.let { TaskNotificationHelper.showFailureNotification(it, "转写失败: ${error.message}") }
-                    }
-            }
+        val context = appContext
+        if (context == null) {
+            _errorMessage.value = "无法启动后台任务：应用上下文丢失"
+            return
+        }
+        if (isRecordAlreadyProcessing(record.id)) {
+            _successMessage.value = "该录音已在转写队列中"
+            return
+        }
+        if (!ApiKeyProvider.hasApiKey()) {
+            val message = "API Key 未配置，请先在设置中填写后再转写"
+            _errorMessage.value = message
+            updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_FAILED)
+            TaskNotificationHelper.showFailureNotification(context, message)
+            return
+        }
+
+        AppLogger.i("ViewModel", "提交后台转写任务（含纪要）: ${record.fileName}")
+        val enqueued = TranscriptionWorkScheduler.enqueue(
+            context = context,
+            recordId = record.id,
+            generateMinute = true
+        )
+        if (enqueued) {
+            updateRecordStage(record.id, RecordProcessStage.QUEUED)
+            syncQueuedRecordStage(record.id)
+            _successMessage.value = "任务已加入后台队列，退出应用后会继续执行"
+        } else {
+            _successMessage.value = "该录音已在后台队列中"
         }
     }
 
@@ -321,7 +362,6 @@ class MainViewModel(
         viewModelScope.launch {
             updateRecordStage(record.id, RecordProcessStage.GENERATING_MINUTE)
             AppLogger.i("ViewModel", "调用生成纪要（后台），转写ID: ${transcript.id}")
-            appContext?.let { TaskNotificationHelper.showProgressNotification(it, "正在生成纪要", "纪要生成中...") }
             
             repository.generateMeetingMinute(transcript, record)
                 .onSuccess { minute ->
@@ -520,27 +560,29 @@ class MainViewModel(
     }
     
     /**
-     * Set a pending shared file to show the AudioReceiveScreen
+     * Set pending shared files to show the AudioReceiveScreen.
      */
-    fun setPendingShareFile(pending: PendingShareFile) {
+    fun setPendingShareFiles(pending: List<PendingShareFile>) {
         _shareError.value = null
-        _pendingShareFile.value = pending
+        _pendingShareFiles.value = pending
+            .filter { it.fileName.isNotBlank() }
+            .distinctBy { "${it.uri}|${it.fileName}" }
     }
 
     /**
-     * Clear pending shared file (dismiss AudioReceiveScreen)
+     * Clear pending shared files (dismiss AudioReceiveScreen).
      */
-    fun clearPendingShareFile() {
-        _pendingShareFile.value = null
+    fun clearPendingShareFiles() {
+        _pendingShareFiles.value = emptyList()
         _shareError.value = null
     }
 
+    fun setShareError(message: String?) {
+        _shareError.value = message
+    }
+
     /**
-     * Import audio file with user-chosen options from AudioReceiveScreen.
-     * @param filePath Local file path after copying from shared Uri
-     * @param fileName Display name of the file
-     * @param tier Processing tier selected by user
-     * @param contactName Optional contact name provided by user
+     * Backward-compatible single-file import entry.
      */
     fun importWithOptions(
         filePath: String,
@@ -548,32 +590,82 @@ class MainViewModel(
         tier: AudioImportTier,
         contactName: String?
     ) {
+        importBatchWithOptions(
+            files = listOf(LocalImportAudioFile(filePath = filePath, fileName = fileName)),
+            tier = tier,
+            contactName = contactName
+        )
+    }
+
+    /**
+     * Import copied local files in batch and apply selected processing tier.
+     */
+    fun importBatchWithOptions(
+        files: List<LocalImportAudioFile>,
+        tier: AudioImportTier,
+        contactName: String?,
+        copyFailedFileNames: List<String> = emptyList()
+    ) {
         viewModelScope.launch {
             _errorMessage.value = null
+            if (files.isEmpty()) {
+                _shareError.value = "导入失败：没有可导入的文件"
+                return@launch
+            }
 
-            repository.importAudioFile(filePath, fileName, contactName)
-                .onSuccess { record ->
-                    AppLogger.i("ViewModel", "文件导入成功(${tier.label}): ${record.fileName}")
-                    // Clear the receive dialog
-                    _pendingShareFile.value = null
-                    _shareError.value = null
+            val importedRecords = mutableListOf<CallRecordEntity>()
+            val importFailedNames = mutableListOf<String>()
 
-                    when (tier) {
-                        AudioImportTier.STORE_ONLY -> {
-                            // Nothing more to do
-                        }
-                        AudioImportTier.STORE_AND_TRANSCRIBE -> {
-                            transcribeRecordOnly(record)
-                        }
-                        AudioImportTier.FULL_PIPELINE -> {
-                            transcribeRecord(record)
-                        }
+            files.forEach { file ->
+                repository.importAudioFile(file.filePath, file.fileName, contactName)
+                    .onSuccess { record ->
+                        importedRecords += record
+                        AppLogger.i("ViewModel", "文件导入成功(${tier.label}): ${record.fileName}")
                     }
+                    .onFailure { error ->
+                        AppLogger.e("ViewModel", "导入失败: ${file.fileName} - ${error.message}", error)
+                        importFailedNames += file.fileName
+                    }
+            }
+
+            if (importedRecords.isEmpty()) {
+                val failed = (copyFailedFileNames + importFailedNames).distinct()
+                val preview = failed.take(3).joinToString("、")
+                _shareError.value = if (preview.isNotBlank()) {
+                    "导入失败：${preview}${if (failed.size > 3) " 等${failed.size}个文件" else ""}"
+                } else {
+                    "导入失败：文件不可用"
                 }
-                .onFailure { error ->
-                    AppLogger.e("ViewModel", "导入失败: ${error.message}", error)
-                    _shareError.value = "导入失败: ${error.message}"
+                return@launch
+            }
+
+            _pendingShareFiles.value = emptyList()
+            _shareError.value = null
+
+            importedRecords.forEach { record ->
+                when (tier) {
+                    AudioImportTier.STORE_ONLY -> Unit
+                    AudioImportTier.STORE_AND_TRANSCRIBE -> transcribeRecordOnly(record)
+                    AudioImportTier.FULL_PIPELINE -> transcribeRecord(record)
                 }
+            }
+
+            val failedTotal = copyFailedFileNames.size + importFailedNames.size
+            _successMessage.value = when {
+                failedTotal == 0 && importedRecords.size == 1 -> "文件导入成功"
+                failedTotal == 0 -> "成功导入 ${importedRecords.size} 个文件"
+                else -> "成功导入 ${importedRecords.size} 个文件，失败 $failedTotal 个"
+            }
+
+            if (failedTotal > 0) {
+                val failedNames = (copyFailedFileNames + importFailedNames).distinct()
+                val preview = failedNames.take(3).joinToString("、")
+                _errorMessage.value = if (failedNames.size > 3) {
+                    "部分文件处理失败：$preview 等 ${failedNames.size} 个"
+                } else {
+                    "部分文件处理失败：$preview"
+                }
+            }
         }
     }
 
@@ -581,21 +673,76 @@ class MainViewModel(
      * Transcribe a record without generating a minute afterward
      */
     private fun transcribeRecordOnly(record: CallRecordEntity) {
-        viewModelScope.launch {
-            updateRecordStage(record.id, RecordProcessStage.TRANSCRIBING)
-            AppLogger.i("ViewModel", "开始转写录音（仅转写）: ${record.fileName}")
+        val context = appContext
+        if (context == null) {
+            _shareError.value = "无法启动后台任务：应用上下文丢失"
+            return
+        }
+        if (isRecordAlreadyProcessing(record.id)) {
+            _successMessage.value = "该录音已在转写队列中"
+            return
+        }
+        if (!ApiKeyProvider.hasApiKey()) {
+            val message = "API Key 未配置，请先在设置中填写后再转写"
+            _shareError.value = message
+            updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_FAILED)
+            TaskNotificationHelper.showFailureNotification(context, message)
+            return
+        }
 
-            launch {
-                repository.transcribeRecord(record)
-                    .onSuccess { _ ->
-                        AppLogger.i("ViewModel", "转写完成（仅转写模式）")
-                        updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_DONE)
-                    }
-                    .onFailure { error ->
-                        AppLogger.e("ViewModel", "转写失败: ${error.message}", error)
-                        updateRecordStage(record.id, RecordProcessStage.TRANSCRIBE_FAILED)
-                    }
+        AppLogger.i("ViewModel", "提交后台转写任务（仅转写）: ${record.fileName}")
+        val enqueued = TranscriptionWorkScheduler.enqueue(
+            context = context,
+            recordId = record.id,
+            generateMinute = false
+        )
+        if (enqueued) {
+            updateRecordStage(record.id, RecordProcessStage.QUEUED)
+            syncQueuedRecordStage(record.id)
+            _successMessage.value = "转写任务已加入后台队列，退出应用后会继续执行"
+        } else {
+            _successMessage.value = "该录音已在后台队列中"
+        }
+    }
+
+    private fun syncQueuedRecordStage(recordId: Long) {
+        viewModelScope.launch {
+            when (getTranscriptionWorkState(recordId)) {
+                TranscriptionWorkState.RUNNING -> updateRecordStage(recordId, RecordProcessStage.TRANSCRIBING)
+                TranscriptionWorkState.QUEUED -> updateRecordStage(recordId, RecordProcessStage.QUEUED)
+                TranscriptionWorkState.NONE -> Unit
             }
+            scheduleQueueStageSync()
+        }
+    }
+
+    private fun scheduleQueueStageSync() {
+        if (queueStageSyncJob?.isActive == true) {
+            return
+        }
+
+        queueStageSyncJob = viewModelScope.launch {
+            while (true) {
+                val hasPipelineActivity = _recordProcessStages.value.values.any { stage ->
+                    stage == RecordProcessStage.QUEUED ||
+                        stage == RecordProcessStage.TRANSCRIBING ||
+                        stage == RecordProcessStage.GENERATING_MINUTE
+                }
+                if (!hasPipelineActivity) {
+                    break
+                }
+                restoreProcessStages(_records.value)
+                delay(2_000L)
+            }
+        }
+    }
+
+    private fun isRecordAlreadyProcessing(recordId: Long): Boolean {
+        return when (_recordProcessStages.value[recordId]) {
+            RecordProcessStage.QUEUED,
+            RecordProcessStage.TRANSCRIBING,
+            RecordProcessStage.GENERATING_MINUTE -> true
+            else -> false
         }
     }
 

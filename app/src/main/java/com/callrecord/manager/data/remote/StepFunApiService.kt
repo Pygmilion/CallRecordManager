@@ -50,17 +50,21 @@ object ApiClient {
                 val original = chain.request()
                 val request = original.newBuilder()
                     .header("Authorization", "Bearer $currentApiKey")
-                    .header("Content-Type", "application/json")
                     .method(original.method, original.body)
                     .build()
                 chain.proceed(request)
             }
             .addInterceptor(okhttp3.logging.HttpLoggingInterceptor().apply {
-                level = okhttp3.logging.HttpLoggingInterceptor.Level.BODY
+                // Avoid dumping multipart audio body into logs, which can severely slow down long uploads.
+                level = okhttp3.logging.HttpLoggingInterceptor.Level.BASIC
             })
+            // Some mobile networks/proxies are unstable with HTTP/2 long uploads; pin to HTTP/1.1.
+            .protocols(listOf(okhttp3.Protocol.HTTP_1_1))
+            .retryOnConnectionFailure(true)
             .connectTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
-            .writeTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(1800, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(900, java.util.concurrent.TimeUnit.SECONDS)
+            .callTimeout(3600, java.util.concurrent.TimeUnit.SECONDS)
             .build()
 
         val retrofit = retrofit2.Retrofit.Builder()

@@ -2,6 +2,7 @@ package com.callrecord.manager
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -9,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
@@ -18,10 +18,7 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -33,7 +30,6 @@ import com.callrecord.manager.data.repository.ApiKeyProvider
 import com.callrecord.manager.data.repository.CallRecordRepository
 import com.callrecord.manager.ui.screen.*
 import com.callrecord.manager.ui.theme.CallRecordManagerTheme
-import com.callrecord.manager.ui.theme.DialogShape
 import java.io.File
 import java.io.FileOutputStream
 
@@ -58,6 +54,8 @@ class MainActivity : ComponentActivity() {
         
         // Create notification channel
         com.callrecord.manager.utils.TaskNotificationHelper.createChannel(applicationContext)
+        // Clear stale progress notification from previous process/work restarts.
+        com.callrecord.manager.utils.TaskNotificationHelper.cancelProgressNotification(applicationContext)
         
         // 初始化数据库
         val database = AppDatabase.getDatabase(applicationContext)
@@ -103,7 +101,13 @@ class MainActivity : ComponentActivity() {
                     MainApp(
                         viewModel = vm,
                         onPickAudioFile = { pickAudioFile() },
-                        onCopySharedFile = { uri, tier, contactName -> copyAndImportSharedFile(uri, tier, contactName) }
+                        onCopySharedFiles = { pendingFiles, tier, contactName ->
+                            copyAndImportSharedFiles(
+                                pendingFiles = pendingFiles,
+                                tier = tier,
+                                contactName = contactName
+                            )
+                        }
                     )
                 }
             }
@@ -127,12 +131,14 @@ class MainActivity : ComponentActivity() {
 
             // Show the AudioReceiveScreen instead of importing directly
             val suggestedContact = extractContactFromFileName(fileName)
-            viewModel.setPendingShareFile(
-                PendingShareFile(
-                    uri = uri,
-                    fileName = fileName,
-                    fileSize = fileSize,
-                    suggestedContactName = suggestedContact
+            viewModel.setPendingShareFiles(
+                listOf(
+                    PendingShareFile(
+                        uri = uri,
+                        fileName = fileName,
+                        fileSize = fileSize,
+                        suggestedContactName = suggestedContact
+                    )
                 )
             )
         } catch (e: Exception) {
@@ -141,27 +147,58 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Copy shared file to app directory and import with chosen options.
+     * Copy shared files to app directory and import with chosen options.
      * Called from MainApp composable via AudioReceiveScreen confirm.
      */
-    fun copyAndImportSharedFile(uri: Uri, tier: AudioImportTier, contactName: String?) {
+    fun copyAndImportSharedFiles(
+        pendingFiles: List<PendingShareFile>,
+        tier: AudioImportTier,
+        contactName: String?
+    ) {
         try {
-            val fileName = getFileName(uri) ?: "audio_${System.currentTimeMillis()}.m4a"
-
             val destDir = File(getExternalFilesDir(null), "ImportedRecordings")
             if (!destDir.exists()) destDir.mkdirs()
 
-            val destFile = File(destDir, fileName)
-            contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(destFile).use { output ->
-                    input.copyTo(output)
+            val copiedFiles = mutableListOf<LocalImportAudioFile>()
+            val failedFiles = mutableListOf<String>()
+
+            pendingFiles.forEach { pending ->
+                runCatching {
+                    val destFile = createUniqueDestinationFile(destDir, pending.fileName)
+                    contentResolver.openInputStream(pending.uri)?.use { input ->
+                        FileOutputStream(destFile).use { output ->
+                            input.copyTo(output)
+                        }
+                    } ?: throw IllegalStateException("无法读取文件内容")
+                    copiedFiles.add(
+                        LocalImportAudioFile(
+                            filePath = destFile.absolutePath,
+                            fileName = destFile.name
+                        )
+                    )
+                }.onFailure { error ->
+                    com.callrecord.manager.utils.AppLogger.e(
+                        "MainActivity",
+                        "复制分享文件失败: ${pending.fileName}",
+                        error
+                    )
+                    failedFiles.add(pending.fileName)
                 }
             }
 
-            viewModel.importWithOptions(destFile.absolutePath, fileName, tier, contactName)
+            if (copiedFiles.isEmpty()) {
+                viewModel.setShareError("导入失败：未能复制任何文件")
+                return
+            }
+            viewModel.importBatchWithOptions(
+                files = copiedFiles,
+                tier = tier,
+                contactName = contactName,
+                copyFailedFileNames = failedFiles
+            )
         } catch (e: Exception) {
             com.callrecord.manager.utils.AppLogger.e("MainActivity", "复制分享文件失败", e)
-            viewModel.clearPendingShareFile()
+            viewModel.setShareError("导入失败: ${e.message}")
         }
     }
     
@@ -169,37 +206,51 @@ class MainActivity : ComponentActivity() {
      * Check for shared audio in intent and show receive screen
      */
     private fun checkSharedAudio(intent: Intent?) {
-        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("audio/") == true) {
-            intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)?.let { uri ->
-                com.callrecord.manager.utils.AppLogger.i("MainActivity", "接收到分享的音频: $uri")
-                showReceiveScreen(uri)
+        if (intent == null) return
+        val action = intent.action
+        val mimeType = intent.type.orEmpty()
+
+        if (action == Intent.ACTION_SEND) {
+            extractSingleShareUri(intent)?.let { uri ->
+                if (isAudioUri(uri, mimeType)) {
+                    com.callrecord.manager.utils.AppLogger.i("MainActivity", "接收到分享的音频: $uri")
+                    showReceiveScreen(listOf(uri))
+                }
             }
-        } else if (intent?.action == Intent.ACTION_VIEW && intent.data != null) {
+        } else if (action == Intent.ACTION_SEND_MULTIPLE) {
+            val uris = extractMultipleShareUris(intent)
+            val audioUris = uris.filter { uri -> isAudioUri(uri, mimeType) }
+            if (audioUris.isNotEmpty()) {
+                com.callrecord.manager.utils.AppLogger.i("MainActivity", "接收到批量分享音频: ${audioUris.size} 个")
+                showReceiveScreen(audioUris)
+            }
+        } else if (action == Intent.ACTION_VIEW && intent.data != null) {
             intent.data?.let { uri ->
                 com.callrecord.manager.utils.AppLogger.i("MainActivity", "打开音频文件: $uri")
-                showReceiveScreen(uri)
+                showReceiveScreen(listOf(uri))
             }
         }
     }
 
     /**
-     * Show the AudioReceiveScreen for a shared URI
+     * Show the AudioReceiveScreen for shared URI list.
      */
-    private fun showReceiveScreen(uri: Uri) {
+    private fun showReceiveScreen(uris: List<Uri>) {
         try {
-            val fileName = getFileName(uri) ?: "audio_${System.currentTimeMillis()}.m4a"
-            val fileSize = getFileSize(uri)
-            val suggestedContact = extractContactFromFileName(fileName)
+            val pendingFiles = uris.map { uri ->
+                val fileName = getFileName(uri) ?: "audio_${System.currentTimeMillis()}.m4a"
+                val fileSize = getFileSize(uri)
+                val suggestedContact = extractContactFromFileName(fileName)
+                PendingShareFile(
+                    uri = uri,
+                    fileName = fileName,
+                    fileSize = fileSize,
+                    suggestedContactName = suggestedContact
+                )
+            }
 
             if (::viewModel.isInitialized) {
-                viewModel.setPendingShareFile(
-                    PendingShareFile(
-                        uri = uri,
-                        fileName = fileName,
-                        fileSize = fileSize,
-                        suggestedContactName = suggestedContact
-                    )
-                )
+                viewModel.setPendingShareFiles(pendingFiles)
             }
         } catch (e: Exception) {
             com.callrecord.manager.utils.AppLogger.e("MainActivity", "准备接收界面失败", e)
@@ -255,88 +306,120 @@ class MainActivity : ComponentActivity() {
         }
         return null
     }
+
+    private fun createUniqueDestinationFile(destDir: File, originName: String): File {
+        val safeName = originName.ifBlank { "audio_${System.currentTimeMillis()}.m4a" }
+        var target = File(destDir, safeName)
+        if (!target.exists()) {
+            return target
+        }
+
+        val base = safeName.substringBeforeLast(".", safeName)
+        val ext = safeName.substringAfterLast(".", "")
+        var index = 1
+        while (target.exists()) {
+            val candidateName = if (ext.isBlank()) {
+                "${base}_$index"
+            } else {
+                "${base}_$index.$ext"
+            }
+            target = File(destDir, candidateName)
+            index++
+        }
+        return target
+    }
+
+    private fun extractSingleShareUri(intent: Intent): Uri? {
+        val fromExtra = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+        }
+        if (fromExtra != null) return fromExtra
+        val clipData = intent.clipData
+        if (clipData != null && clipData.itemCount > 0) {
+            return clipData.getItemAt(0)?.uri
+        }
+        return intent.data
+    }
+
+    private fun extractMultipleShareUris(intent: Intent): List<Uri> {
+        val fromExtras = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                ?.filterNotNull()
+                .orEmpty()
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                ?.filterNotNull()
+                .orEmpty()
+        }
+        if (fromExtras.isNotEmpty()) {
+            return fromExtras
+        }
+
+        val clipData = intent.clipData ?: return emptyList()
+        return buildList {
+            for (index in 0 until clipData.itemCount) {
+                clipData.getItemAt(index)?.uri?.let { add(it) }
+            }
+        }
+    }
+
+    private fun isAudioUri(uri: Uri, intentMimeType: String): Boolean {
+        if (intentMimeType.startsWith("audio/")) {
+            return true
+        }
+        val resolvedType = contentResolver.getType(uri).orEmpty()
+        if (resolvedType.startsWith("audio/")) {
+            return true
+        }
+        val extension = getFileName(uri)
+            ?.substringAfterLast('.', "")
+            ?.lowercase()
+            .orEmpty()
+        return extension in setOf("mp3", "m4a", "wav", "amr", "3gp", "aac", "ogg", "flac")
+    }
 }
 
 @Composable
 fun MainApp(
     viewModel: MainViewModel,
     onPickAudioFile: () -> Unit,
-    onCopySharedFile: (Uri, AudioImportTier, String?) -> Unit = { _, _, _ -> }
+    onCopySharedFiles: (List<PendingShareFile>, AudioImportTier, String?) -> Unit = { _, _, _ -> }
 ) {
-    var selectedTab by remember { mutableStateOf(0) }
+    var selectedTab by remember { mutableIntStateOf(0) }
     var selectedRecord by remember { mutableStateOf<CallRecordEntity?>(null) }
     var selectedMinute by remember { mutableStateOf<MeetingMinuteEntity?>(null) }
     var showTimelineBrief by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
-    var showExitDialog by remember { mutableStateOf(false) }
     // Transcript edit state
     var editingTranscriptId by remember { mutableStateOf<Long?>(null) }
     var editingTranscriptText by remember { mutableStateOf("") }
     val coroutineScope = rememberCoroutineScope()
 
     // Audio receive screen
-    val pendingFile by viewModel.pendingShareFile.collectAsState()
+    val pendingFiles by viewModel.pendingShareFiles.collectAsState()
     val shareError by viewModel.shareError.collectAsState()
 
     // Timeline brief state
     val timelineBriefResult by viewModel.timelineBriefResult.collectAsState()
     val isGeneratingBrief by viewModel.isGeneratingBrief.collectAsState()
 
-    // Global task state for banner & back press guard
-    val hasActiveTasks by viewModel.hasActiveTasks.collectAsState()
-    val activeTaskDescription by viewModel.activeTaskDescription.collectAsState()
-
-    // BackHandler: intercept back press when tasks are running
-    BackHandler(enabled = hasActiveTasks && selectedRecord == null && selectedMinute == null && !showTimelineBrief && !showSettings) {
-        showExitDialog = true
-    }
-
-    // Exit confirmation dialog
-    if (showExitDialog) {
-        AlertDialog(
-            onDismissRequest = { showExitDialog = false },
-            shape = DialogShape,
-            title = {
-                Text(
-                    "任务进行中",
-                    style = MaterialTheme.typography.titleLarge
-                )
-            },
-            text = {
-                Text(
-                    "有任务正在处理中，离开可能导致任务中断。是否继续？",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showExitDialog = false }) {
-                    Text("留在应用")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showExitDialog = false
-                    // Allow the system back behavior
-                }) {
-                    Text("离开", color = MaterialTheme.colorScheme.error)
-                }
-            }
-        )
-    }
-
     // BackHandler for AudioReceiveScreen
-    BackHandler(enabled = pendingFile != null) {
-        viewModel.clearPendingShareFile()
+    BackHandler(enabled = pendingFiles.isNotEmpty()) {
+        viewModel.clearPendingShareFiles()
     }
 
-    pendingFile?.let { pending ->
+    if (pendingFiles.isNotEmpty()) {
         AudioReceiveScreen(
-            pendingFile = pending,
+            pendingFiles = pendingFiles,
             errorMessage = shareError,
             onConfirm = { tier, contactName ->
-                onCopySharedFile(pending.uri, tier, contactName)
+                onCopySharedFiles(pendingFiles, tier, contactName)
             },
-            onDismiss = { viewModel.clearPendingShareFile() }
+            onDismiss = { viewModel.clearPendingShareFiles() }
         )
     }
     
@@ -514,41 +597,6 @@ fun MainApp(
                             showTimelineBrief = true
                         }
                     )
-                }
-            }
-
-            // Global task progress banner (top overlay)
-            AnimatedVisibility(
-                visible = hasActiveTasks,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                modifier = Modifier.align(Alignment.TopCenter)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xCC1A1A2E))
-                        .statusBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = activeTaskDescription.ifEmpty { "正在处理中，请保持 App 在前台运行..." },
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelMedium,
-                            textAlign = TextAlign.Center
-                        )
-                    }
                 }
             }
         }

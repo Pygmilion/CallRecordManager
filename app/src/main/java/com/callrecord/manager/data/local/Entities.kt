@@ -109,6 +109,7 @@ enum class TranscriptStatus {
  */
 enum class RecordProcessStage {
     IDLE,               // Not yet processed
+    QUEUED,             // Waiting in background queue
     TRANSCRIBING,       // Transcription in progress
     TRANSCRIBE_DONE,    // Transcription completed
     GENERATING_MINUTE,  // Meeting minute generation in progress

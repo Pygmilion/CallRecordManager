@@ -37,18 +37,35 @@ data class PendingShareFile(
 )
 
 /**
+ * Local copied file metadata used for batch import.
+ */
+data class LocalImportAudioFile(
+    val filePath: String,
+    val fileName: String
+)
+
+/**
  * Audio receive screen – redesigned with brand styling
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioReceiveScreen(
-    pendingFile: PendingShareFile,
+    pendingFiles: List<PendingShareFile>,
     errorMessage: String?,
     onConfirm: (tier: AudioImportTier, contactName: String?) -> Unit,
     onDismiss: () -> Unit
 ) {
+    if (pendingFiles.isEmpty()) return
+
+    val isBatch = pendingFiles.size > 1
+    val totalSize = pendingFiles.sumOf { it.fileSize }
+    val firstFile = pendingFiles.first()
     var selectedTier by remember { mutableStateOf(AudioImportTier.FULL_PIPELINE) }
-    var contactName by remember { mutableStateOf(pendingFile.suggestedContactName ?: "") }
+    var contactName by remember(pendingFiles) {
+        mutableStateOf(
+            if (isBatch) "" else firstFile.suggestedContactName.orEmpty()
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -86,26 +103,64 @@ fun AudioReceiveScreen(
                     )
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Outlined.AudioFile, null,
-                                modifier = Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                        if (isBatch) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.FolderOpen, null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "共 ${pendingFiles.size} 个音频文件",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                pendingFile.fileName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 2,
-                                fontWeight = FontWeight.Medium
+                                "总大小: ${formatFileSize(totalSize)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            pendingFiles.take(3).forEach { file ->
+                                Text(
+                                    "• ${file.fileName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
+                                )
+                            }
+                            if (pendingFiles.size > 3) {
+                                Text(
+                                    "… 还有 ${pendingFiles.size - 3} 个文件",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Outlined.AudioFile, null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    firstFile.fileName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 2,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "大小: ${formatFileSize(firstFile.fileSize)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "大小: ${formatFileSize(pendingFile.fileSize)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
 
@@ -166,7 +221,7 @@ fun AudioReceiveScreen(
 
                 // Contact name input
                 Text(
-                    "联系人（可选）",
+                    if (isBatch) "联系人（批量可选）" else "联系人（可选）",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onBackground
@@ -230,7 +285,7 @@ fun AudioReceiveScreen(
             ) {
                 Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("确认导入")
+                Text(if (isBatch) "导入 ${pendingFiles.size} 个文件" else "确认导入")
             }
         },
         dismissButton = {

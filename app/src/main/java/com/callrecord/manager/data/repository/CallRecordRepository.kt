@@ -4,18 +4,32 @@ import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.ContactsContract
+import androidx.work.WorkManager
 import com.callrecord.manager.data.local.*
 import com.callrecord.manager.data.remote.*
+import com.callrecord.manager.utils.AudioChunk
+import com.callrecord.manager.utils.AudioChunker
 import com.callrecord.manager.utils.AppLogger
+import com.callrecord.manager.work.TranscriptionWorker
+import com.google.gson.Gson
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import java.io.IOException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.security.MessageDigest
 
 /**
  * 通话录音仓库
@@ -27,6 +41,37 @@ class CallRecordRepository(
     private val meetingMinuteDao: MeetingMinuteDao,
     private val apiService: StepFunApiService
 ) {
+
+    private companion object {
+        private const val LONG_AUDIO_CHUNK_THRESHOLD_SECONDS = 8 * 60L
+        private const val LONG_AUDIO_CHUNK_THRESHOLD_MB = 8.0
+        private const val AUDIO_CHUNK_DURATION_SECONDS = 3 * 60L
+        private const val TRANSCRIBE_RETRY_MAX_ATTEMPTS = 3
+        private const val TRANSCRIBE_RETRY_DELAY_BASE_MS = 3_000L
+        private const val ASR_SINGLE_ATTEMPT_TIMEOUT_MS = 4 * 60 * 1000L
+        private const val PROCESSING_ORPHAN_TIMEOUT_MS = 2 * 60 * 1000L
+        private const val CHECKPOINT_VERSION = 1
+        private val RETRYABLE_HTTP_CODES = setOf(408, 429, 500, 502, 503, 504)
+    }
+
+    private data class TranscriptionCheckpoint(
+        val version: Int = CHECKPOINT_VERSION,
+        val recordId: Long,
+        val sourcePathHash: String,
+        val sourceSize: Long,
+        val sourceLastModified: Long,
+        val chunkDirPath: String,
+        val totalChunks: Int,
+        val nextChunkIndex: Int,
+        val mergedText: String,
+        val updateTime: Long = System.currentTimeMillis()
+    )
+
+    private data class SourceFingerprint(
+        val pathHash: String,
+        val size: Long,
+        val lastModified: Long
+    )
     
     /**
      * Get current API Key from ApiKeyProvider.
@@ -42,6 +87,11 @@ class CallRecordRepository(
     
     // API 日志目录
     private val apiLogDir = File(context.getExternalFilesDir(null), "ApiLogs").apply {
+        if (!exists()) mkdirs()
+    }
+
+    private val checkpointSerializer = Gson()
+    private val checkpointRootDir = File(context.filesDir, "transcription_checkpoints").apply {
         if (!exists()) mkdirs()
     }
     
@@ -88,6 +138,8 @@ class CallRecordRepository(
         try {
             AppLogger.i("扫描录音", "开始扫描系统录音文件")
             val recordings = mutableListOf<CallRecordEntity>()
+            val supportedAudioExtensions = setOf("mp3", "m4a", "wav", "amr", "3gp", "aac", "ogg")
+            val scannedFilePaths = mutableSetOf<String>()
             
             // 常见的录音文件目录
             val recordingDirs = listOf(
@@ -103,6 +155,7 @@ class CallRecordRepository(
                 File("/storage/emulated/0/通话录音"),
                 File("/storage/emulated/0/DCIM/Recordings"),
                 File("/storage/emulated/0/Music/Recordings"),
+                File("/storage/emulated/0/Music/Recordings/CallRecordings"),
                 File("/storage/emulated/0/Documents/Recordings"),
                 File("/storage/emulated/0/Download/Recordings"),
                 
@@ -123,13 +176,20 @@ class CallRecordRepository(
             for (dir in recordingDirs) {
                 if (dir.exists() && dir.isDirectory) {
                     AppLogger.d("扫描录音", "扫描目录: ${dir.absolutePath}")
-                    
-                    val files = dir.listFiles { file ->
-                        file.extension.lowercase() in listOf("mp3", "m4a", "wav", "amr", "3gp", "aac", "ogg")
-                    }
-                    
-                    files?.forEach { file ->
+
+                    val files = collectAudioFilesRecursively(
+                        rootDir = dir,
+                        supportedExtensions = supportedAudioExtensions
+                    )
+                    AppLogger.d("扫描录音", "目录命中文件数: ${files.size} (${dir.absolutePath})")
+
+                    files.forEach { file ->
                         totalFiles++
+                        val normalizedPath = normalizeFilePath(file)
+                        if (!scannedFilePaths.add(normalizedPath)) {
+                            AppLogger.d("扫描录音", "跳过重复文件: ${file.absolutePath}")
+                            return@forEach
+                        }
                         try {
                             val record = createRecordFromFile(file)
                             recordings.add(record)
@@ -148,10 +208,14 @@ class CallRecordRepository(
             
             // Dedup: filter out recordings that already exist in DB by contactName + recordTime
             val existingRecords = callRecordDao.getAllRecordsOnce()
+            val existingPaths = existingRecords
+                .map { normalizeFilePath(File(it.filePath)) }
+                .toSet()
             val existingKeys = existingRecords.map { "${it.contactName ?: it.phoneNumber}|${it.recordTime}" }.toSet()
             val newRecordings = recordings.filter { record ->
+                val normalizedPath = normalizeFilePath(File(record.filePath))
                 val key = "${record.contactName ?: record.phoneNumber}|${record.recordTime}"
-                key !in existingKeys
+                normalizedPath !in existingPaths && key !in existingKeys
             }
             AppLogger.i("扫描录音", "去重后: 新增 ${newRecordings.size} 个, 已存在 ${recordings.size - newRecordings.size} 个")
 
@@ -166,6 +230,28 @@ class CallRecordRepository(
             AppLogger.e("扫描录音", "扫描失败", e)
             Result.failure(e)
         }
+    }
+
+    private fun collectAudioFilesRecursively(
+        rootDir: File,
+        supportedExtensions: Set<String>
+    ): List<File> {
+        return runCatching {
+            rootDir.walkTopDown()
+                .onFail { current, error ->
+                    AppLogger.w("扫描录音", "遍历目录失败: ${current.absolutePath}", error)
+                }
+                .filter { file ->
+                    file.isFile && file.extension.lowercase() in supportedExtensions
+                }
+                .toList()
+        }.onFailure { error ->
+            AppLogger.w("扫描录音", "扫描目录失败: ${rootDir.absolutePath}", error)
+        }.getOrDefault(emptyList())
+    }
+
+    private fun normalizeFilePath(file: File): String {
+        return runCatching { file.canonicalPath }.getOrDefault(file.absolutePath)
     }
 
     /**
@@ -359,6 +445,15 @@ class CallRecordRepository(
      */
     suspend fun deleteRecord(record: CallRecordEntity): Result<Unit> = withContext(Dispatchers.IO) {
         try {
+            // Cancel queued/running transcription first to avoid "deleted but still processing" ghost state.
+            runCatching {
+                WorkManager.getInstance(context)
+                    .cancelAllWorkByTag(TranscriptionWorker.recordTag(record.id))
+            }.onFailure { error ->
+                AppLogger.w("删除录音", "取消后台任务失败: recordId=${record.id}", error)
+            }
+            clearTranscriptionCheckpoint(record.id)
+
             // 删除文件
             val file = File(record.filePath)
             if (file.exists()) {
@@ -369,8 +464,8 @@ class CallRecordRepository(
             callRecordDao.deleteRecord(record)
             
             // 删除关联的转写和纪要
+            transcriptDao.deleteTranscriptByRecordId(record.id)
             record.transcriptId?.let { transcriptId ->
-                transcriptDao.deleteTranscriptByRecordId(record.id)
                 meetingMinuteDao.deleteMinuteByTranscriptId(transcriptId)
             }
             
@@ -383,148 +478,558 @@ class CallRecordRepository(
     /**
      * 转写录音
      */
-    suspend fun transcribeRecord(record: CallRecordEntity): Result<TranscriptEntity> = withContext(Dispatchers.IO) {
+    suspend fun transcribeRecord(
+        record: CallRecordEntity,
+        onProgress: (suspend (String) -> Unit)? = null
+    ): Result<TranscriptEntity> = withContext(Dispatchers.IO) {
+        var processingTranscript: TranscriptEntity? = null
+        var processingTranscriptId: Long? = null
+
         try {
             AppLogger.i("转写", "开始转写录音: ${record.fileName}")
             AppLogger.d("转写", "录音ID: ${record.id}, 文件路径: ${record.filePath}")
-            
-            // 检查文件是否存在
+
             val file = File(record.filePath)
             if (!file.exists()) {
                 AppLogger.e("转写", "录音文件不存在: ${record.filePath}")
                 return@withContext Result.failure(Exception("录音文件不存在"))
             }
-            
+
             val fileSizeMB = file.length() / (1024.0 * 1024.0)
-            AppLogger.d("转写", "文件大小: ${"%.2f".format(fileSizeMB)}MB")
-            
-            // File size check: reject files over 25MB
-            if (fileSizeMB > 25.0) {
-                AppLogger.e("转写", "文件过大: ${"%.2f".format(fileSizeMB)}MB，超过25MB限制")
-                return@withContext Result.failure(Exception("文件过大（${"%.1f".format(fileSizeMB)}MB），请压缩至25MB以内后重试"))
-            }
-            
-            // 保存上传的文件信息
-            saveApiLog("transcribe_request", "录音ID: ${record.id}\n文件: ${file.name}\n大小: ${file.length()}字节")
-            
-            // 更新状态为处理中
-            val transcript = TranscriptEntity(
-                recordId = record.id,
-                fullText = "",
-                speakers = emptyList(),
-                status = TranscriptStatus.PROCESSING
+            AppLogger.d("转写", "文件大小: ${"%.2f".format(fileSizeMB)}MB, 时长=${record.duration}s")
+
+            saveApiLog(
+                "transcribe_request",
+                "录音ID: ${record.id}\n文件: ${file.name}\n大小: ${file.length()}字节\n时长: ${record.duration}秒"
             )
-            val transcriptId = transcriptDao.insertTranscript(transcript)
-            AppLogger.i("转写", "创建转写记录，ID: $transcriptId")
 
-            // 准备文件上传
-            AppLogger.d("转写", "准备上传文件到API")
-            
             val apiKey = requireApiKey()
-            
-            // Retry up to 3 times for network errors (DNS resolution, timeout, etc.)
-            var lastException: Exception? = null
-            var response: retrofit2.Response<StepFunAsrResponse>? = null
-            for (attempt in 1..3) {
-                try {
-                    val requestFile = file.asRequestBody("audio/*".toMediaTypeOrNull())
-                    val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
-                    val modelBody = "step-asr".toRequestBody("text/plain".toMediaTypeOrNull())
-                    val responseFormatBody = "json".toRequestBody("text/plain".toMediaTypeOrNull())
+            onProgress?.invoke("正在准备转写")
 
-                    AppLogger.i("转写", "调用阶跃星辰ASR API (第${attempt}次)")
-                    response = apiService.transcribeAudioFile(
-                        authorization = "Bearer $apiKey",
-                        file = body,
-                        model = modelBody,
-                        responseFormat = responseFormatBody
+            val (processing, transcriptId) = prepareProcessingTranscript(record.id)
+            processingTranscript = processing
+            processingTranscriptId = transcriptId
+
+            val fullText = when {
+                shouldUseChunkTranscription(record, fileSizeMB) -> {
+                    transcribeLargeFile(
+                        record = record,
+                        sourceFile = file,
+                        apiKey = apiKey,
+                        onProgress = onProgress
                     )
-                    lastException = null
-                    break // Success, exit retry loop
-                } catch (e: java.net.UnknownHostException) {
-                    lastException = e
-                    AppLogger.w("转写", "网络请求失败(第${attempt}次): DNS解析失败，${if (attempt < 3) "${attempt * 3}秒后重试" else "放弃重试"}", e)
-                    if (attempt < 3) kotlinx.coroutines.delay(attempt * 3000L)
-                } catch (e: java.net.SocketException) {
-                    lastException = e
-                    AppLogger.w("转写", "网络请求失败(第${attempt}次): 连接异常，${if (attempt < 3) "${attempt * 3}秒后重试" else "放弃重试"}", e)
-                    if (attempt < 3) kotlinx.coroutines.delay(attempt * 3000L)
-                } catch (e: java.io.IOException) {
-                    lastException = e
-                    AppLogger.w("转写", "网络请求失败(第${attempt}次): IO异常，${if (attempt < 3) "${attempt * 3}秒后重试" else "放弃重试"}", e)
-                    if (attempt < 3) kotlinx.coroutines.delay(attempt * 3000L)
+                }
+                else -> {
+                    onProgress?.invoke("正在上传录音并转写")
+                    val response = requestTranscriptionWithRetry(
+                        requestFile = file,
+                        apiKey = apiKey,
+                        requestLabel = "录音 ${record.fileName}"
+                    ) { message ->
+                        onProgress?.invoke(message)
+                    }
+                    response.text
                 }
             }
-            
-            if (lastException != null || response == null) {
-                // Update transcript status to FAILED before throwing
-                transcriptDao.updateTranscript(
-                    transcript.copy(id = transcriptId, status = TranscriptStatus.FAILED)
-                )
-                throw lastException ?: Exception("网络请求失败，已重试3次")
-            }
 
-            AppLogger.d("转写", "API响应码: ${response.code()}")
-            
-            if (response.isSuccessful && response.body() != null) {
-                val asrResponse = response.body()!!
-                AppLogger.i("转写", "转写成功，文本长度: ${asrResponse.text.length}字符")
-                
-                // 保存 API 响应
-                saveApiLog("transcribe_response", "录音ID: ${record.id}\n转写文本:\n${asrResponse.text}")
-                
-                // 由于 step-asr 不支持说话人分离，创建一个简单的分段
-                val speakers = listOf(
-                    SpeakerSegment(
-                        speaker = "Speaker 1",
-                        text = asrResponse.text,
-                        startTime = 0.0,
-                        endTime = 0.0
-                    )
-                )
+            AppLogger.i("转写", "转写成功，文本长度: ${fullText.length}字符")
+            saveApiLog("transcribe_response", "录音ID: ${record.id}\n转写文本:\n$fullText")
 
-                // 更新转写记录
-                val updatedTranscript = transcript.copy(
-                    id = transcriptId,
-                    fullText = asrResponse.text,
-                    speakers = speakers,
-                    status = TranscriptStatus.COMPLETED,
-                    updateTime = System.currentTimeMillis()
+            val speakers = listOf(
+                SpeakerSegment(
+                    speaker = "Speaker 1",
+                    text = fullText,
+                    startTime = 0.0,
+                    endTime = 0.0
                 )
-                transcriptDao.updateTranscript(updatedTranscript)
-                AppLogger.i("转写", "转写记录已更新")
+            )
 
-                // 更新录音记录
-                callRecordDao.updateRecord(
-                    record.copy(
-                        isTranscribed = true,
-                        transcriptId = transcriptId
-                    )
-                )
-                AppLogger.i("转写", "录音记录已标记为已转写")
+            val updatedTranscript = processing.copy(
+                id = transcriptId,
+                fullText = fullText,
+                speakers = speakers,
+                status = TranscriptStatus.COMPLETED,
+                updateTime = System.currentTimeMillis()
+            )
+            transcriptDao.updateTranscript(updatedTranscript)
+            AppLogger.i("转写", "转写记录已更新")
 
-                Result.success(updatedTranscript)
-            } else {
-                val errorBody = response.errorBody()?.string()
-                AppLogger.e("转写", "API调用失败: ${response.code()} - ${response.message()}")
-                AppLogger.e("转写", "错误详情: $errorBody")
-                
-                // 保存错误响应
-                saveApiLog("transcribe_error", "录音ID: ${record.id}\n错误码: ${response.code()}\n错误: $errorBody")
-                
-                // 更新状态为失败
-                transcriptDao.updateTranscript(
-                    transcript.copy(
-                        id = transcriptId,
-                        status = TranscriptStatus.FAILED
-                    )
+            callRecordDao.updateRecord(
+                record.copy(
+                    isTranscribed = true,
+                    transcriptId = transcriptId
                 )
-                Result.failure(Exception("API错误 ${response.code()}: ${response.message()}\n$errorBody"))
-            }
+            )
+            AppLogger.i("转写", "录音记录已标记为已转写")
+
+            Result.success(updatedTranscript)
+        } catch (e: CancellationException) {
+            AppLogger.w("转写", "转写任务被取消: ${e.message}")
+            markTranscriptFailed(processingTranscript, processingTranscriptId)
+            Result.failure(IllegalStateException("转写任务被取消", e))
         } catch (e: Exception) {
+            markTranscriptFailed(processingTranscript, processingTranscriptId)
+
             AppLogger.e("转写", "转写过程发生异常", e)
             saveApiLog("transcribe_exception", "异常: ${e.message}\n${e.stackTraceToString()}")
             Result.failure(e)
+        }
+    }
+
+    private suspend fun markTranscriptFailed(
+        processingTranscript: TranscriptEntity?,
+        processingTranscriptId: Long?
+    ) {
+        val transcript = processingTranscript
+        val transcriptId = processingTranscriptId
+        if (transcript == null || transcriptId == null) {
+            return
+        }
+        runCatching {
+            transcriptDao.updateTranscript(
+                transcript.copy(
+                    id = transcriptId,
+                    status = TranscriptStatus.FAILED,
+                    updateTime = System.currentTimeMillis()
+                )
+            )
+        }.onFailure { updateError ->
+            AppLogger.w("转写", "更新失败状态时异常: ${updateError.message}", updateError)
+        }
+    }
+
+    private suspend fun prepareProcessingTranscript(recordId: Long): Pair<TranscriptEntity, Long> {
+        val now = System.currentTimeMillis()
+        val latest = transcriptDao.getTranscriptByRecordId(recordId)
+
+        if (latest != null && latest.status != TranscriptStatus.COMPLETED) {
+            val reused = latest.copy(
+                fullText = "",
+                speakers = emptyList(),
+                status = TranscriptStatus.PROCESSING,
+                updateTime = now
+            )
+            transcriptDao.updateTranscript(reused)
+            AppLogger.i("转写", "复用转写记录，ID: ${latest.id}")
+            return reused to latest.id
+        }
+
+        val transcript = TranscriptEntity(
+            recordId = recordId,
+            fullText = "",
+            speakers = emptyList(),
+            status = TranscriptStatus.PROCESSING
+        )
+        val transcriptId = transcriptDao.insertTranscript(transcript)
+        AppLogger.i("转写", "创建转写记录，ID: $transcriptId")
+        return transcript.copy(id = transcriptId) to transcriptId
+    }
+
+    private fun shouldUseChunkTranscription(record: CallRecordEntity, fileSizeMB: Double): Boolean {
+        if (record.duration >= LONG_AUDIO_CHUNK_THRESHOLD_SECONDS) {
+            return true
+        }
+        if (fileSizeMB >= LONG_AUDIO_CHUNK_THRESHOLD_MB) {
+            return true
+        }
+        return record.duration <= 0 && fileSizeMB >= LONG_AUDIO_CHUNK_THRESHOLD_MB / 2
+    }
+
+    private suspend fun transcribeLargeFile(
+        record: CallRecordEntity,
+        sourceFile: File,
+        apiKey: String,
+        onProgress: (suspend (String) -> Unit)?
+    ): String {
+        AppLogger.i(
+            "转写",
+            "检测到长音频，启用切片转写: recordId=${record.id}, duration=${record.duration}s"
+        )
+        val sourceFingerprint = buildSourceFingerprint(sourceFile)
+        val checkpoint = loadTranscriptionCheckpoint(record.id)
+        val reusableCheckpoint = checkpoint?.takeIf {
+            isCheckpointCompatible(
+                checkpoint = it,
+                recordId = record.id,
+                sourceFingerprint = sourceFingerprint
+            )
+        }
+
+        var chunkDir: File
+        var chunks: List<AudioChunk>
+        var nextChunkIndex = 0
+        val merged = StringBuilder()
+
+        if (reusableCheckpoint != null) {
+            val restoredChunks = loadChunksFromCheckpoint(reusableCheckpoint)
+            if (restoredChunks != null) {
+                chunkDir = File(reusableCheckpoint.chunkDirPath)
+                chunks = restoredChunks
+                nextChunkIndex = reusableCheckpoint.nextChunkIndex.coerceIn(0, chunks.size)
+                if (reusableCheckpoint.mergedText.isNotBlank()) {
+                    merged.append(reusableCheckpoint.mergedText)
+                }
+                if (nextChunkIndex < chunks.size) {
+                    onProgress?.invoke("恢复上次进度：分片 ${nextChunkIndex + 1}/${chunks.size}")
+                } else {
+                    onProgress?.invoke("恢复上次进度：准备合并结果")
+                }
+                AppLogger.i(
+                    "转写",
+                    "命中断点续跑: recordId=${record.id}, nextChunk=${nextChunkIndex + 1}/${chunks.size}"
+                )
+            } else {
+                AppLogger.w("转写", "检查点存在但分片文件不完整，重新切片: recordId=${record.id}")
+                clearTranscriptionCheckpoint(record.id)
+                val rebuilt = buildChunksForRecord(record, sourceFile, sourceFingerprint, onProgress)
+                chunkDir = rebuilt.first
+                chunks = rebuilt.second
+            }
+        } else {
+            if (checkpoint != null) {
+                AppLogger.w("转写", "检查点与当前源文件不匹配，重建切片: recordId=${record.id}")
+                clearTranscriptionCheckpoint(record.id)
+            }
+            val rebuilt = buildChunksForRecord(record, sourceFile, sourceFingerprint, onProgress)
+            chunkDir = rebuilt.first
+            chunks = rebuilt.second
+        }
+
+        if (chunks.isEmpty()) {
+            clearTranscriptionCheckpoint(record.id, chunkDir)
+            return requestTranscriptionWithRetry(
+                requestFile = sourceFile,
+                apiKey = apiKey,
+                requestLabel = "录音 ${record.fileName}"
+            ) { message ->
+                onProgress?.invoke(message)
+            }.text
+        }
+
+        if (nextChunkIndex >= chunks.size) {
+            val restoredText = merged.toString().trim()
+            clearTranscriptionCheckpoint(record.id, chunkDir)
+            return restoredText.ifBlank {
+                throw IllegalStateException("检查点显示已完成，但文本为空")
+            }
+        }
+
+        AppLogger.i("转写", "长音频切片就绪: ${chunks.size} 段, 从分片 ${nextChunkIndex + 1} 开始")
+        for (index in nextChunkIndex until chunks.size) {
+            val chunk = chunks[index]
+            val label = "分片 ${index + 1}/${chunks.size}"
+            onProgress?.invoke("正在转写$label")
+            AppLogger.i(
+                "转写",
+                "开始转写$label: ${chunk.file.name}, 区间=${chunk.startMs}ms-${chunk.endMs}ms"
+            )
+            val response = requestTranscriptionWithRetry(
+                requestFile = chunk.file,
+                apiKey = apiKey,
+                requestLabel = "录音${record.fileName}-$label"
+            ) { message ->
+                onProgress?.invoke("$label：$message")
+            }
+            val chunkText = response.text.trim()
+            if (chunkText.isNotBlank()) {
+                if (merged.isNotEmpty()) merged.append("\n")
+                merged.append(chunkText)
+            }
+            persistTranscriptionCheckpoint(
+                TranscriptionCheckpoint(
+                    recordId = record.id,
+                    sourcePathHash = sourceFingerprint.pathHash,
+                    sourceSize = sourceFingerprint.size,
+                    sourceLastModified = sourceFingerprint.lastModified,
+                    chunkDirPath = chunkDir.absolutePath,
+                    totalChunks = chunks.size,
+                    nextChunkIndex = index + 1,
+                    mergedText = merged.toString()
+                )
+            )
+        }
+
+        val mergedText = merged.toString().trim()
+        clearTranscriptionCheckpoint(record.id, chunkDir)
+        return mergedText.ifBlank {
+            throw IllegalStateException("分片转写完成但未返回有效文本")
+        }
+    }
+
+    private suspend fun buildChunksForRecord(
+        record: CallRecordEntity,
+        sourceFile: File,
+        sourceFingerprint: SourceFingerprint,
+        onProgress: (suspend (String) -> Unit)?
+    ): Pair<File, List<AudioChunk>> {
+        onProgress?.invoke("检测到长音频，正在切片")
+
+        val chunkDir = buildChunkDirectory(record.id).apply {
+            if (exists()) {
+                deleteRecursively()
+            }
+            mkdirs()
+        }
+
+        val chunks = AudioChunker.split(
+            sourceFile = sourceFile,
+            outputDir = chunkDir,
+            chunkDurationSec = AUDIO_CHUNK_DURATION_SECONDS
+        ).getOrElse { error ->
+            AppLogger.w("转写", "长音频切片失败，回退单文件上传: ${error.message}", error)
+            chunkDir.deleteRecursively()
+            onProgress?.invoke("长音频切片失败，回退整段转写")
+            return Pair(
+                chunkDir,
+                emptyList()
+            )
+        }
+
+        if (chunks.isEmpty()) {
+            AppLogger.w("转写", "长音频切片结果为空，回退单文件上传")
+            onProgress?.invoke("切片数量不足，回退整段转写")
+            chunkDir.deleteRecursively()
+            return Pair(
+                chunkDir,
+                emptyList()
+            )
+        }
+
+        persistTranscriptionCheckpoint(
+            TranscriptionCheckpoint(
+                recordId = record.id,
+                sourcePathHash = sourceFingerprint.pathHash,
+                sourceSize = sourceFingerprint.size,
+                sourceLastModified = sourceFingerprint.lastModified,
+                chunkDirPath = chunkDir.absolutePath,
+                totalChunks = chunks.size,
+                nextChunkIndex = 0,
+                mergedText = ""
+            )
+        )
+        AppLogger.i("转写", "长音频切片成功: ${chunks.size} 段")
+        return chunkDir to chunks
+    }
+
+    private fun buildSourceFingerprint(sourceFile: File): SourceFingerprint {
+        return SourceFingerprint(
+            pathHash = sha256(sourceFile.absolutePath),
+            size = sourceFile.length(),
+            lastModified = sourceFile.lastModified()
+        )
+    }
+
+    private fun isCheckpointCompatible(
+        checkpoint: TranscriptionCheckpoint,
+        recordId: Long,
+        sourceFingerprint: SourceFingerprint
+    ): Boolean {
+        if (checkpoint.version != CHECKPOINT_VERSION) return false
+        if (checkpoint.recordId != recordId) return false
+        if (checkpoint.sourcePathHash != sourceFingerprint.pathHash) return false
+        if (checkpoint.sourceSize != sourceFingerprint.size) return false
+        if (checkpoint.sourceLastModified != sourceFingerprint.lastModified) return false
+        if (checkpoint.totalChunks <= 0) return false
+        return checkpoint.nextChunkIndex in 0..checkpoint.totalChunks
+    }
+
+    private fun loadChunksFromCheckpoint(checkpoint: TranscriptionCheckpoint): List<AudioChunk>? {
+        val chunkDir = File(checkpoint.chunkDirPath)
+        if (!chunkDir.exists() || !chunkDir.isDirectory) {
+            return null
+        }
+
+        val indexedFiles = chunkDir
+            .listFiles()
+            ?.filter { it.isFile }
+            ?.mapNotNull { file ->
+                parseChunkIndex(file.name)?.let { index -> index to file }
+            }
+            ?.sortedBy { it.first }
+            ?: return null
+
+        if (indexedFiles.size != checkpoint.totalChunks) {
+            return null
+        }
+
+        val expectedIndexes = (1..checkpoint.totalChunks).toList()
+        if (indexedFiles.map { it.first } != expectedIndexes) {
+            return null
+        }
+
+        return indexedFiles.map { (index, file) ->
+            val startMs = (index - 1L) * AUDIO_CHUNK_DURATION_SECONDS * 1000L
+            val endMs = index.toLong() * AUDIO_CHUNK_DURATION_SECONDS * 1000L
+            AudioChunk(
+                file = file,
+                startMs = startMs,
+                endMs = endMs
+            )
+        }
+    }
+
+    private fun parseChunkIndex(fileName: String): Int? {
+        val match = Regex("^chunk_(\\d+)\\.[A-Za-z0-9]+$").matchEntire(fileName) ?: return null
+        return match.groupValues.getOrNull(1)?.toIntOrNull()
+    }
+
+    private fun persistTranscriptionCheckpoint(checkpoint: TranscriptionCheckpoint) {
+        val checkpointFile = getCheckpointFile(checkpoint.recordId)
+        val tempFile = File(checkpointFile.parentFile, "${checkpointFile.name}.tmp")
+        val payload = checkpointSerializer.toJson(checkpoint)
+        tempFile.writeText(payload)
+
+        val renamed = tempFile.renameTo(checkpointFile)
+        if (!renamed) {
+            checkpointFile.writeText(payload)
+            tempFile.delete()
+        }
+    }
+
+    private fun loadTranscriptionCheckpoint(recordId: Long): TranscriptionCheckpoint? {
+        val checkpointFile = getCheckpointFile(recordId)
+        if (!checkpointFile.exists()) {
+            return null
+        }
+        return runCatching {
+            checkpointSerializer.fromJson(
+                checkpointFile.readText(),
+                TranscriptionCheckpoint::class.java
+            )
+        }.onFailure { error ->
+            AppLogger.w("转写", "读取检查点失败，已忽略: recordId=$recordId", error)
+        }.getOrNull()
+    }
+
+    private fun clearTranscriptionCheckpoint(recordId: Long, knownChunkDir: File? = null) {
+        val checkpoint = loadTranscriptionCheckpoint(recordId)
+        val checkpointFile = getCheckpointFile(recordId)
+
+        val chunkDirs = linkedSetOf<File>()
+        knownChunkDir?.let(chunkDirs::add)
+        checkpoint?.chunkDirPath?.takeIf { it.isNotBlank() }?.let { chunkDirs += File(it) }
+        chunkDirs += buildChunkDirectory(recordId)
+
+        chunkDirs.forEach { dir ->
+            runCatching {
+                if (dir.exists()) {
+                    dir.deleteRecursively()
+                }
+            }.onFailure { error ->
+                AppLogger.w("转写", "清理切片目录失败: ${dir.absolutePath}", error)
+            }
+        }
+
+        runCatching {
+            if (checkpointFile.exists()) {
+                checkpointFile.delete()
+            }
+        }.onFailure { error ->
+            AppLogger.w("转写", "清理检查点文件失败: ${checkpointFile.absolutePath}", error)
+        }
+    }
+
+    private fun getCheckpointFile(recordId: Long): File {
+        return File(checkpointRootDir, "record_$recordId.json")
+    }
+
+    private fun buildChunkDirectory(recordId: Long): File {
+        return File(context.cacheDir, "transcribe_chunks/record_$recordId")
+    }
+
+    private fun sha256(value: String): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
+        return digest.joinToString(separator = "") { byte -> "%02x".format(byte) }
+    }
+
+    private suspend fun requestTranscriptionWithRetry(
+        requestFile: File,
+        apiKey: String,
+        requestLabel: String,
+        onProgress: (suspend (String) -> Unit)? = null
+    ): StepFunAsrResponse {
+        var lastError: Exception? = null
+
+        for (attempt in 1..TRANSCRIBE_RETRY_MAX_ATTEMPTS) {
+            val suffix = "(第${attempt}次)"
+            try {
+                AppLogger.i("转写", "调用阶跃星辰ASR API: $requestLabel $suffix")
+                onProgress?.invoke("上传中 $suffix")
+
+                val response = withTimeout(ASR_SINGLE_ATTEMPT_TIMEOUT_MS) {
+                    apiService.transcribeAudioFile(
+                        authorization = "Bearer $apiKey",
+                        file = MultipartBody.Part.createFormData(
+                            "file",
+                            requestFile.name,
+                            requestFile.asRequestBody("audio/*".toMediaTypeOrNull())
+                        ),
+                        model = "step-asr".toRequestBody("text/plain".toMediaTypeOrNull()),
+                        responseFormat = "json".toRequestBody("text/plain".toMediaTypeOrNull())
+                    )
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    return response.body()!!
+                }
+
+                val code = response.code()
+                val errorBody = response.errorBody()?.string()
+                AppLogger.e("转写", "API调用失败: $requestLabel - $code ${response.message()}")
+                saveApiLog("transcribe_error", "请求: $requestLabel\n错误码: $code\n错误: $errorBody")
+
+                if (code in RETRYABLE_HTTP_CODES && attempt < TRANSCRIBE_RETRY_MAX_ATTEMPTS) {
+                    val delayMs = attempt * TRANSCRIBE_RETRY_DELAY_BASE_MS
+                    onProgress?.invoke("服务繁忙，${delayMs / 1000}秒后重试")
+                    delay(delayMs)
+                    continue
+                }
+
+                throw Exception("API错误 $code: ${response.message()}\n$errorBody")
+            } catch (e: Exception) {
+                if (e is CancellationException && e !is TimeoutCancellationException) {
+                    throw e
+                }
+
+                val retryableError = normalizeRetryableException(e)
+                if (!isRetryableNetworkException(retryableError)) {
+                    throw retryableError
+                }
+                lastError = retryableError
+                if (attempt < TRANSCRIBE_RETRY_MAX_ATTEMPTS) {
+                    val delayMs = attempt * TRANSCRIBE_RETRY_DELAY_BASE_MS
+                    AppLogger.w(
+                        "转写",
+                        "$requestLabel 网络异常${
+                            if (attempt < TRANSCRIBE_RETRY_MAX_ATTEMPTS) "，${delayMs / 1000}秒后重试" else ""
+                        }",
+                        retryableError
+                    )
+                    onProgress?.invoke("网络波动，${delayMs / 1000}秒后重试")
+                    delay(delayMs)
+                }
+            }
+        }
+
+        throw lastError ?: Exception("转写请求失败，已重试${TRANSCRIBE_RETRY_MAX_ATTEMPTS}次")
+    }
+
+    private fun normalizeRetryableException(error: Exception): Exception {
+        if (error is TimeoutCancellationException) {
+            return SocketTimeoutException("ASR请求超时").apply {
+                initCause(error)
+            }
+        }
+        return error
+    }
+
+    private fun isRetryableNetworkException(error: Exception): Boolean {
+        return when (error) {
+            is UnknownHostException,
+            is SocketTimeoutException,
+            is SocketException,
+            is IOException -> true
+            else -> false
         }
     }
 
@@ -907,6 +1412,36 @@ ${transcript.fullText}
      */
     suspend fun getTranscriptByRecordId(recordId: Long): TranscriptEntity? {
         return transcriptDao.getTranscriptByRecordId(recordId)
+    }
+
+    /**
+     * 修复无活跃 Work 的孤儿转写状态，避免条目永久停留在“转写中”。
+     */
+    suspend fun repairOrphanProcessingTranscript(
+        recordId: Long,
+        hasActiveWork: Boolean
+    ): TranscriptEntity? = withContext(Dispatchers.IO) {
+        val latest = transcriptDao.getTranscriptByRecordId(recordId) ?: return@withContext null
+        val status = latest.status
+        if (hasActiveWork || (status != TranscriptStatus.PROCESSING && status != TranscriptStatus.PENDING)) {
+            return@withContext latest
+        }
+
+        val now = System.currentTimeMillis()
+        if (now - latest.updateTime < PROCESSING_ORPHAN_TIMEOUT_MS) {
+            return@withContext latest
+        }
+
+        val fixed = latest.copy(
+            status = TranscriptStatus.FAILED,
+            updateTime = now
+        )
+        transcriptDao.updateTranscript(fixed)
+        AppLogger.w(
+            "转写",
+            "检测到孤儿 PROCESSING 状态并已修复为 FAILED: recordId=$recordId, transcriptId=${latest.id}"
+        )
+        fixed
     }
 
     /**

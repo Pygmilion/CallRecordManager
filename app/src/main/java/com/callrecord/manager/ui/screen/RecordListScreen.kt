@@ -483,6 +483,10 @@ fun RecordProcessBadge(stage: RecordProcessStage) {
             "待处理",
             StatusColors.pendingContainer, StatusColors.pending, false
         )
+        RecordProcessStage.QUEUED -> StatusBadgeData(
+            "排队中...",
+            StatusColors.pendingContainer, StatusColors.pending, false
+        )
         RecordProcessStage.TRANSCRIBING -> StatusBadgeData(
             "转写中...",
             StatusColors.processingContainer, StatusColors.processing, true
@@ -677,8 +681,8 @@ fun formatDuration(seconds: Long): String {
     val secs = seconds % 60
 
     return when {
-        hours > 0 -> String.format("%d:%02d:%02d", hours, minutes, secs)
-        else -> String.format("%d:%02d", minutes, secs)
+        hours > 0 -> String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, secs)
+        else -> String.format(Locale.getDefault(), "%d:%02d", minutes, secs)
     }
 }
 
